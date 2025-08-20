@@ -141,7 +141,7 @@ jobs:
             echo '[REMOTE] Eseguo login a docker...'
             aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin 152485877259.dkr.ecr.us-east-1.amazonaws.com || { echo '[REMOTE] ERRORE: docker login fallito'; exit 1; }
 
-            cd infra
+            cd /home/$SSH_USER/omega-app/infra
             if docker compose version >/dev/null 2>&1; then
               echo '[REMOTE] Pull immagini Docker...'
               sudo docker compose -f docker-compose.lightsail.yml pull
