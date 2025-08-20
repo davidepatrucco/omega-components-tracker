@@ -122,9 +122,16 @@ jobs:
               echo '[REMOTE] AWS CLI già presente: $(aws --version)'
             fi
             echo '[REMOTE] Spostamento in /home/$SSH_USER/omega-app...'
-            cd /home/$SSH_USER/omega-app
-            echo '[REMOTE] Aggiorno repo con git pull...'
-            git pull || { echo '[REMOTE] ERRORE: git pull fallito'; exit 1; }
+              if [ -d "/home/$SSH_USER/omega-app/.git" ]; then
+                echo '[REMOTE] omega-app è una git repo, faccio git pull...'
+                cd /home/$SSH_USER/omega-app
+                git pull || { echo '[REMOTE] ERRORE: git pull fallito'; exit 1; }
+              else
+                echo '[REMOTE] omega-app NON è una git repo, la elimino e faccio git clone...'
+                rm -rf /home/$SSH_USER/omega-app
+                git clone https://github.com/davidepatrucco/omega-components-tracker.git /home/$SSH_USER/omega-app || { echo '[REMOTE] ERRORE: git clone fallito'; exit 1; }
+                cd /home/$SSH_USER/omega-app
+              fi
             echo '[REMOTE] Login a ECR...'
             export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
             export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
