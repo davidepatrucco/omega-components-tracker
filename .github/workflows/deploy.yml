@@ -92,14 +92,17 @@ jobs:
             set -e
             cd /home/$SSH_USER || exit 1
             tar xzf $BUNDLE_NAME
-            # install docker if missing (non-interactive, Debian/Ubuntu)
+            # install Docker CE (official repo) if missing (non-interactive)
             if ! command -v docker >/dev/null 2>&1; then
-              echo "Docker not found on host, attempting install (requires sudo)..."
+              echo "Docker not found on host, installing Docker CE from official repo (requires sudo)..."
               sudo apt-get update -y
-              # install docker engine and compose plugin
-              sudo apt-get install -y docker.io docker-compose-plugin || true
+              sudo apt-get install -y ca-certificates curl gnupg lsb-release
+              sudo mkdir -p /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              sudo apt-get update -y
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
               sudo systemctl enable --now docker || true
-              # add current user to docker group (may require re-login to take effect)
               sudo usermod -aG docker "$USER" || true
             fi
             cd omega-app/infra
