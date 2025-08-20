@@ -19,7 +19,8 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
 fi
 
 git checkout "$BR_PROD"
-git pull --ff-only "$REMOTE" "$BR_PROD"
+git fetch "$REMOTE" "$BR_STAGING"
+git reset --hard "$REMOTE/$BR_STAGING"
 git merge --no-ff "origin/$BR_STAGING" -m "release: $TAG"
 git tag -a "$TAG" -m "Release $TAG"
 git push "$REMOTE" "$BR_PROD" --tags
