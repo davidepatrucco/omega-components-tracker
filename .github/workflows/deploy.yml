@@ -46,7 +46,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./omega-app/backend
-          file: ./omega-app/backend/Dockerfile
+          file: ./omega-app/backend/Dockerfile.backend
           push: true
           tags: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-backend:${{ env.TAG }}
 
@@ -55,7 +55,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./omega-app/frontend
-          file: ./omega-app/frontend/Dockerfile
+          file: ./omega-app/frontend/Dockerfile.frontend
           push: true
           tags: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-frontend:${{ env.TAG }}
 
