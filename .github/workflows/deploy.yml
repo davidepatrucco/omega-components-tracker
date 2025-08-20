@@ -100,6 +100,30 @@ jobs:
             else
               echo "[REMOTE] Docker già presente: \\$(docker --version)"
             fi
+
+            echo "[REMOTE] Verifica docker compose/plugin..."
+            if ! command -v docker-compose >/dev/null 2>&1 && ! docker compose version >/dev/null 2>&1; then
+              echo "[REMOTE] Provo installazione docker-compose-plugin via apt-get..."
+              sudo apt-get update && sudo apt-get install -y docker-compose-plugin || true
+              if ! docker compose version >/dev/null 2>&1; then
+                echo "[REMOTE] Fallback: installazione binario legacy docker-compose..."
+                sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                sudo chmod +x /usr/local/bin/docker-compose
+                echo "[REMOTE] docker-compose installato: $([ -x /usr/local/bin/docker-compose ] && /usr/local/bin/docker-compose --version || echo 'fallito')"
+              else
+                echo "[REMOTE] docker compose plugin installato: $(docker compose version)"
+              fi
+            fi
+
+            # Scegli comando compose
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE_CMD="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              COMPOSE_CMD="docker-compose"
+            else
+              echo "[REMOTE] ERRORE: Nessun comando docker compose disponibile!"; exit 1
+            fi
+
             echo "[REMOTE] Verifica AWS CLI..."
             if ! command -v aws >/dev/null 2>&1; then
               echo "[REMOTE] Installazione AWS CLI..."
@@ -119,9 +143,9 @@ jobs:
             export AWS_REGION="us-east-1"
             aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 152485877259.dkr.ecr.us-east-1.amazonaws.com
             echo "[REMOTE] Pull immagini Docker..."
-            docker compose -f docker-compose.lightsail.yml pull
+            $COMPOSE_CMD -f docker-compose.lightsail.yml pull
             echo "[REMOTE] Avvio container..."
-            docker compose -f docker-compose.lightsail.yml up -d
+            $COMPOSE_CMD -f docker-compose.lightsail.yml up -d
             echo "[REMOTE] Stato container:"
             docker ps -a
             echo "[REMOTE] Fine deploy."
