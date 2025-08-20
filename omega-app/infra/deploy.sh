@@ -1,21 +1,49 @@
 #!/usr/bin/env bash
-#set -e
-# Simple deploy helper to be executed on the server after receiving bundle.tgz
-# Usage: ./deploy.sh [compose-file]
+set -euo pipefail
 
-COMPOSE=${1:-docker-compose.lightsail.yml}
+REMOTE="origin"
+BR_DEV="development"
+BR_STAGING="staging"
+BR_PROD="main"
 
-if [ -f "$COMPOSE" ]; then
-  echo "Using compose file: $COMPOSE"
-  docker compose -f "$COMPOSE" build
-  docker compose -f "$COMPOSE" up -d
-else
-  echo "Compose file $COMPOSE not found, falling back to default docker-compose.yml"
-  docker compose build
-  docker compose up -d
+TARGET="${1:-}"       # usage: ./deploy.sh staging | prod [tag]
+TAG="${2:-}"          # serve solo per prod, es: ./deploy.sh prod v1.2.3
+
+if [[ "$TARGET" != "staging" && "$TARGET" != "prod" ]]; then
+  echo "Usage:"
+  echo "  $0 staging"
+  echo "  $0 prod vX.Y.Z"
+  exit 1
 fi
 
-echo "Pruning unused images..."
-docker image prune -f
+git fetch --all --prune
 
-echo "Deploy finished."
+# safety check
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "❌ Working tree not clean"; exit 1
+fi
+
+if [[ "$TARGET" == "staging" ]]; then
+  git checkout "$BR_STAGING"
+  git fetch "$REMOTE" "$BR_STAGING"
+  git reset --hard "$REMOTE/$BR_STAGING"
+  git merge --no-ff "$REMOTE/$BR_DEV" -m "chore: merge $BR_DEV → $BR_STAGING"
+  git push "$REMOTE" "$BR_STAGING"
+  echo "✅ Deploy su STAGING completato (merge $BR_DEV → $BR_STAGING)"
+  echo "👉 CI/CD staging dovrebbe partire"
+
+elif [[ "$TARGET" == "prod" ]]; then
+  if [[ -z "$TAG" ]]; then
+    echo "❌ Per prod serve un tag: $0 prod vX.Y.Z"
+    exit 1
+  fi
+
+  git checkout "$BR_PROD"
+  git fetch "$REMOTE" "$BR_PROD"
+  git reset --hard "$REMOTE/$BR_PROD"
+  git merge --no-ff "$REMOTE/$BR_STAGING" -m "release: $TAG"
+  git tag -a "$TAG" -m "Release $TAG"
+  git push "$REMOTE" "$BR_PROD" --tags
+  echo "✅ Deploy su PROD completato (merge $BR_STAGING → $BR_PROD + tag $TAG)"
+  echo "👉 CI/CD prod dovrebbe partire"
+fi
