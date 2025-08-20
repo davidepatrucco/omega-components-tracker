@@ -7,6 +7,10 @@ on:
       - staging
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -15,94 +19,72 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare bundle for deploy
-        run: |
-          set -euo pipefail
-          # choose env file based on branch
-          if [ "${{ github.ref }}" = 'refs/heads/staging' ]; then
-            ENV_FILE=.env.staging
-            BUNDLE_NAME=bundle.staging.tgz
-          else
-            ENV_FILE=.env.prod
-            BUNDLE_NAME=bundle.prod.tgz
-          fi
-          echo "Using env file: $ENV_FILE"
-          # ensure backend env exists in repo, fallback to .env
-          if [ -f "$ENV_FILE" ]; then
-            cp "$ENV_FILE" omega-app/backend/.env
-          elif [ -f .env ]; then
-            cp .env omega-app/backend/.env
-          fi
-          # Create bundle. Include top-level infra if present, otherwise omega-app already contains infra
-          if [ -d infra ]; then
-            tar czf $BUNDLE_NAME omega-app infra
-          else
-            tar czf $BUNDLE_NAME omega-app
-          fi
-          ls -l $BUNDLE_NAME
+      # 🔑 Configura credenziali AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-      - name: Upload bundle to server
+      # 🔑 Login a ECR
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 📦 Set TAG in base al branch
+      - name: Set image tag
+        id: vars
         run: |
-          set -euo pipefail
-          if [ "${GITHUB_REF}" = 'refs/heads/staging' ]; then
+          if [ "${GITHUB_REF}" = "refs/heads/staging" ]; then
+            echo "TAG=staging" >> $GITHUB_ENV
+          else
+            echo "TAG=latest" >> $GITHUB_ENV
+          fi
+
+      # 🔨 Build & Push Backend
+      - name: Build & Push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./omega-app/backend
+          file: ./omega-app/backend/Dockerfile
+          push: true
+          tags: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-backend:${{ env.TAG }}
+
+      # 🔨 Build & Push Frontend
+      - name: Build & Push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./omega-app/frontend
+          file: ./omega-app/frontend/Dockerfile
+          push: true
+          tags: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-frontend:${{ env.TAG }}
+
+      # 🔑 Setup SSH agent (senza salvare file key)
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: |
+            ${{ github.ref == 'refs/heads/staging' && secrets.SSH_KEY_STAGE || secrets.SSH_KEY }}
+
+      # 🚀 Deploy su Lightsail
+      - name: Run remote docker compose
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/staging" ]; then
             SSH_HOST="${{ secrets.SSH_HOST_STAGE }}"
             SSH_USER="${{ secrets.SSH_USER_STAGE }}"
-            SSH_KEY="${{ secrets.SSH_KEY_STAGE }}"
-            BUNDLE_NAME=bundle.staging.tgz
           else
             SSH_HOST="${{ secrets.SSH_HOST }}"
             SSH_USER="${{ secrets.SSH_USER }}"
-            SSH_KEY="${{ secrets.SSH_KEY }}"
-            BUNDLE_NAME=bundle.prod.tgz
           fi
-          # support either raw SSH_KEY or base64-encoded SSH_KEY_B64 (recommended)
-          if [ -n "${SSH_KEY_B64:-}" ]; then
-            echo "$SSH_KEY_B64" | base64 -d > key
-          else
-            echo "$SSH_KEY" > key
-          fi
-          chmod 600 key
-          # add host to known_hosts to avoid prompts; useful in CI
-          ssh-keyscan -H "$SSH_HOST" >> known_hosts 2>/dev/null || true
-          # use verbose scp for easier debugging on failures
-          scp -v -i key -o UserKnownHostsFile=known_hosts -o StrictHostKeyChecking=no "$BUNDLE_NAME" "$SSH_USER@$SSH_HOST:/home/$SSH_USER/"
 
-      - name: Extract & run on server (docker compose)
-        run: |
-          set -euo pipefail
-          if [ "${GITHUB_REF}" = 'refs/heads/staging' ]; then
-            SSH_HOST="${{ secrets.SSH_HOST_STAGE }}"
-            SSH_USER="${{ secrets.SSH_USER_STAGE }}"
-            SSH_KEY="${{ secrets.SSH_KEY_STAGE }}"
-            BUNDLE_NAME=bundle.staging.tgz
-          else
-            SSH_HOST="${{ secrets.SSH_HOST }}"
-            SSH_USER="${{ secrets.SSH_USER }}"
-            SSH_KEY="${{ secrets.SSH_KEY }}"
-            BUNDLE_NAME=bundle.prod.tgz
-          fi
-          # support either raw SSH_KEY or base64-encoded SSH_KEY_B64
-          if [ -n "${SSH_KEY_B64:-}" ]; then
-            echo "$SSH_KEY_B64" | base64 -d > key
-          else
-            echo "$SSH_KEY" > key
-          fi
-          chmod 600 key
-            ssh -vvv -i key -o UserKnownHostsFile=known_hosts -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" <<EOF
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" TAG=${TAG} <<'EOF'
             set -e
-            cd /home/$SSH_USER || exit 1
-            tar xzf $BUNDLE_NAME
-            # install Docker CE (official repo) if missing (non-interactive)
-            if ! command -v docker >/dev/null 2>&1; then
-              echo "Docker not found on host, installing Docker using get.docker.com (requires sudo)..."
-              # use the official convenience script which handles distro detection
-              # run non-interactively
-              sudo sh -c 'DEBIAN_FRONTEND=noninteractive curl -fsSL https://get.docker.com | sh' || true
-              sudo systemctl enable --now docker || true
-              sudo usermod -aG docker "$USER" || true
-            fi
-            cd omega-app/infra
-            # try both compose formats (use sudo to avoid permission issues)
-            sudo docker compose -f docker-compose.lightsail.yml pull || true
-            sudo docker compose -f docker-compose.lightsail.yml up -d --build
+            cd /home/$SSH_USER/omega-app/infra
+            # Login a ECR (richiede AWS CLI e variabili AWS_ACCESS_KEY_ID/SECRET_KEY/REGION sul server)
+            export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+            export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+            export AWS_REGION="us-east-1"
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 152485877259.dkr.ecr.us-east-1.amazonaws.com
+            docker compose -f docker-compose.lightsail.yml pull
+            docker compose -f docker-compose.lightsail.yml up -d
           EOF
