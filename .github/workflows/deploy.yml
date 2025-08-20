@@ -121,6 +121,11 @@ jobs:
             else
               echo '[REMOTE] AWS CLI già presente: $(aws --version)'
             fi
+            echo '[REMOTE] Spostamento in /home/$SSH_USER/omega-app...'
+            cd /home/$SSH_USER/omega-app
+            echo '[REMOTE] Aggiorno repo con git pull...'
+            git pull || { echo '[REMOTE] ERRORE: git pull fallito'; exit 1; }
+            cd infra
             echo '[REMOTE] Spostamento in /home/$SSH_USER/omega-app/infra...'
             cd /home/$SSH_USER/omega-app/infra
             echo '[REMOTE] Aggiorno repo con git pull...'
