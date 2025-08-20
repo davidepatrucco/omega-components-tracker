@@ -143,14 +143,14 @@ jobs:
               cd /home/$SSH_USER
               # Ensure repository exists and is on the correct branch. Prefer fetch+reset if present.
               if [ -d "omega-components-tracker/.git" ]; then
-                echo '[REMOTE] omega-components-tracker repo found, fetching and resetting to origin/'"${DEPLOY_BRANCH}""'
+                echo "[REMOTE] omega-components-tracker repo found, fetching and resetting to origin/${DEPLOY_BRANCH}"
                 cd omega-components-tracker
                 git fetch origin || { echo '[REMOTE] ERRORE: git fetch fallito'; exit 1; }
-                git reset --hard origin/'"${DEPLOY_BRANCH}""' || { echo '[REMOTE] ERRORE: git reset fallito'; exit 1; }
+                git reset --hard origin/${DEPLOY_BRANCH} || { echo '[REMOTE] ERRORE: git reset fallito'; exit 1; }
               else
-                echo '[REMOTE] Clono repository e checkout branch '"${DEPLOY_BRANCH}""'
+                echo "[REMOTE] Clono repository e checkout branch ${DEPLOY_BRANCH}"
                 rm -rf omega-components-tracker
-                git clone --branch '"${DEPLOY_BRANCH}""' https://github.com/davidepatrucco/omega-components-tracker.git omega-components-tracker || { echo '[REMOTE] ERRORE: git clone fallito'; exit 1; }
+                git clone --branch ${DEPLOY_BRANCH} https://github.com/davidepatrucco/omega-components-tracker.git omega-components-tracker || { echo '[REMOTE] ERRORE: git clone fallito'; exit 1; }
                 cd omega-components-tracker
               fi
             echo '[REMOTE] Login a ECR...'
