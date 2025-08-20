@@ -70,15 +70,18 @@ jobs:
       - name: Run remote docker compose
         run: |
           echo "[INFO] Branch: ${GITHUB_REF}"
-          touch /home/$SSH_USER/omega-components-tracker/omega-app/infra/.env
+          
+          
           if [ "${GITHUB_REF}" = "refs/heads/staging" ]; then
             SSH_HOST="${{ secrets.SSH_HOST_STAGE }}"
             SSH_USER="${{ secrets.SSH_USER_STAGE }}"
             echo "[INFO] Deploy su STAGING: SSH_HOST=$SSH_HOST, SSH_USER=$SSH_USER"
+            touch /home/$SSH_USER/omega-components-tracker/omega-app/infra/.env
           else
             SSH_HOST="${{ secrets.SSH_HOST }}"
             SSH_USER="${{ secrets.SSH_USER }}"
             echo "[INFO] Deploy su PRODUCTION: SSH_HOST=$SSH_HOST, SSH_USER=$SSH_USER"
+            touch /home/$SSH_USER/omega-components-tracker/omega-app/infra/.env
           fi
 
           echo "[INFO] Avvio SSH verso $SSH_USER@$SSH_HOST con TAG=${TAG}..."
