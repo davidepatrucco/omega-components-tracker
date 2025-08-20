@@ -22,7 +22,7 @@ services:
     restart: unless-stopped
 
   omega_frontend:
-    image: ghcr.io/davidepatrucco/omega-frontend:${TAG}
+  image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-frontend:staging
       image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-frontend:${TAG}
       container_name: omega_frontend
       labels:
@@ -35,7 +35,7 @@ services:
       restart: unless-stopped
 
   omega_backend:
-    image: ghcr.io/davidepatrucco/omega-backend:${TAG}
+  image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-backend:staging
       image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-backend:${TAG}
       container_name: omega_backend
       env_file: ../backend/.env
