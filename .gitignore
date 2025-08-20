@@ -1,0 +1,16 @@
+node_modules
+component-tracker/backend/node_modules
+component-tracker/backend/upload
+archivio*
+
+
+# Secrets
+*.env
+*.env.*
+.env
+.env.*
+.credentials
+**/.env
+**/.env.*
+**/.credentials
+

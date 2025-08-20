@@ -1,0 +1,122 @@
+# Deploy di `omega_app` su Lightsail con Traefik + Docker
+
+## Perché questa scelta
+- **HTTPS automatico** via Let’s Encrypt (Traefik gestisce cert e rinnovi).
+- **Un solo reverse proxy** per web + API.
+- **Setup semplice** con Docker/Compose e CI/CD da GitHub Actions.
+- **Costo minimo**: solo l’istanza Lightsail (no LB, no Container Service).
+
+---
+
+## Passi operativi
+
+### 1) Prerequisiti infrastruttura
+- Lightsail/EC2: apri porte **80/443** in firewall/security group.
+- DNS: record **A** `tuodominio.com` → IP istanza.
+- Server: installa **Docker** + **docker-compose** (v2).
+
+### 2) Struttura repo
+/
+  Dockerfile
+  docker-compose.yml
+  .env
+  src/...
+
+### 3) docker-compose.yml
+version: "3.8"
+
+services:
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.httpchallenge=true"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.le.acme.email=admin@tuodominio.com"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt:/letsencrypt"
+
+  omega_app:
+    build: .
+    container_name: omega_app
+    env_file: .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.omega.rule=Host(`tuodominio.com`)"
+      - "traefik.http.routers.omega.entrypoints=websecure"
+      - "traefik.http.routers.omega.tls.certresolver=le"
+    expose:
+      - "3000"
+
+volumes:
+  letsencrypt:
+
+### 4) Dockerfile per omega_app
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+ENV NODE_ENV=production
+EXPOSE 3000
+CMD ["node","src/server.js"]
+
+### 5) App Node
+- Leggi PORT da env (default 3000).
+- Aggiungi endpoint /health che ritorni 200 OK.
+
+### 6) Prima accensione (sul server)
+docker compose build
+docker compose up -d
+docker compose logs -f traefik
+
+### 7) CI/CD con GitHub Actions
+- Genera chiave SSH per deploy.
+- Secrets nel repo: SSH_HOST, SSH_USER, SSH_KEY.
+- Esempio .github/workflows/deploy.yml:
+
+name: deploy
+on: push
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t omega_app:latest .
+      - name: Tar & ship
+        run: |
+          tar czf bundle.tgz Dockerfile docker-compose.yml .env src package*.json
+          echo "$SSH_KEY" > key && chmod 600 key
+          scp -i key -o StrictHostKeyChecking=no bundle.tgz $SSH_USER@$SSH_HOST:/home/$SSH_USER/
+          ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST '
+            tar xzf bundle.tgz &&
+            docker compose build &&
+            docker compose up -d &&
+            docker image prune -f
+          '
+
+### 8) Operatività
+- Auto-renew TLS: gestito da Traefik.
+- Backup: salva periodicamente il volume letsencrypt.
+- Logs:
+  docker compose logs -f omega_app
+  docker compose logs -f traefik
+- Rollback: versiona le immagini (omega_app:v1, v2) e lancia con docker compose up -d.
+
+---
+
+## Done quando
+- https://tuodominio.com risponde con certificato valido.
+- Redirect da HTTP→HTTPS attivo.
+- GET /health ritorna 200.
+- La pipeline CI/CD deploya automaticamente a ogni push.

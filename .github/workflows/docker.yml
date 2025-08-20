@@ -1,0 +1,262 @@
+name: Build and Deploy to AWS Lightsail
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-west-1
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        run: |
+          docker build --build-arg VITE_API_URL=${{ secrets.VITE_API_URL }} -t 152485877259.dkr.ecr.eu-west-1.amazonaws.com/omega/componenttracker:latest -f docker/Dockerfile .
+          docker push 152485877259.dkr.ecr.eu-west-1.amazonaws.com/omega/componenttracker:latest
+
+          
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.LIGHTSAIL_KEY }}
+
+      - name: Clean up legacy Nginx config (sites-available/sites-enabled)
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} '
+            sudo rm -rf /etc/nginx/sites-available /etc/nginx/sites-enabled || true
+            sudo find /etc/nginx -type l -delete || true
+          '
+
+      - name: Deploy Nginx config (safe, HTTP-only)
+        run: |
+          # Ensure conf.d exists
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} 'sudo mkdir -p /etc/nginx/conf.d'
+
+          # Remove all other confs to prevent legacy SSL configs from breaking nginx
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} 'sudo rm -f /etc/nginx/conf.d/*.conf'
+
+          # Copy the HTTP-only default.conf
+          scp -o StrictHostKeyChecking=no infra/nginx/default.conf ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:/tmp/default.conf
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} '
+            sudo mv /tmp/default.conf /etc/nginx/conf.d/default.conf
+            sudo chown root:root /etc/nginx/conf.d/default.conf
+            sudo chmod 644 /etc/nginx/conf.d/default.conf
+            echo "--- Listing /etc/nginx/conf.d/ after copy ---"
+            sudo ls -l /etc/nginx/conf.d/
+            echo "--- Showing /etc/nginx/conf.d/default.conf ---"
+            sudo cat /etc/nginx/conf.d/default.conf
+            echo "--- Testing nginx config ---"
+            if sudo nginx -t; then
+              echo "Nginx config test passed. Restarting nginx."
+              sudo systemctl restart nginx
+              sudo systemctl status nginx --no-pager
+            else
+              echo "Nginx config test failed! Not restarting nginx."
+              exit 1
+            fi
+          '
+
+      - name: Copy nginx.conf to server (overwrite /etc/nginx/nginx.conf)
+        run: |
+          # Copy the file to a temporary location on the server
+          scp -o StrictHostKeyChecking=no infra/nginx/nginx.conf ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:/tmp/nginx.conf
+
+          # Execute commands on the server to move the file and debug
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} '
+            set -e # Exit on error
+            set -x # Echo commands
+
+            echo "--- Verifying /tmp/nginx.conf (copied from repo) ---"
+            cat /tmp/nginx.conf
+            echo "--- ls -l /tmp/nginx.conf ---"
+            ls -l /tmp/nginx.conf
+
+            echo "--- Current /etc/nginx/nginx.conf (before move) ---"
+            if [ -f /etc/nginx/nginx.conf ]; then
+              sudo ls -l /etc/nginx/nginx.conf
+              sudo cat /etc/nginx/nginx.conf
+            else
+              echo "/etc/nginx/nginx.conf does not exist."
+            fi
+
+            echo "--- Moving /tmp/nginx.conf to /etc/nginx/nginx.conf ---"
+            sudo mv -f /tmp/nginx.conf /etc/nginx/nginx.conf # Use -f to force overwrite
+            MV_EXIT_CODE=$?
+            echo "mv exit code: $MV_EXIT_CODE"
+
+            if [ $MV_EXIT_CODE -ne 0 ]; then
+              echo "ERROR: Failed to move /tmp/nginx.conf to /etc/nginx/nginx.conf. Exit code: $MV_EXIT_CODE"
+              echo "Listing /tmp:"
+              ls -l /tmp
+              echo "Listing /etc/nginx:"
+              sudo ls -lA /etc/nginx
+              exit 1 # Fail the step
+            fi
+
+            echo "--- Verifying /etc/nginx/nginx.conf (after move, before nginx -t) ---"
+            sudo ls -l /etc/nginx/nginx.conf
+            sudo cat /etc/nginx/nginx.conf
+
+            echo "--- Running nginx -t (config test) ---"
+            sudo nginx -t
+            NGINX_T_EXIT_CODE=$?
+            echo "nginx -t exit code: $NGINX_T_EXIT_CODE"
+
+            echo "--- Content of /etc/nginx/nginx.conf (after nginx -t, before restart) ---"
+            sudo cat /etc/nginx/nginx.conf # Check if nginx -t modified it (unlikely)
+
+            if [ $NGINX_T_EXIT_CODE -ne 0 ]; then
+              echo "ERROR: Nginx configuration test failed (nginx -t). Not restarting Nginx."
+              exit 1 # Fail the step
+            fi
+
+            echo "--- Restarting Nginx ---"
+            sudo systemctl restart nginx
+            RESTART_EXIT_CODE=$?
+            echo "systemctl restart nginx exit code: $RESTART_EXIT_CODE"
+            
+            sleep 3 # Give Nginx a moment
+
+            echo "--- Verifying /etc/nginx/nginx.conf (after Nginx restart attempt) ---"
+            sudo cat /etc/nginx/nginx.conf # Check if it reverted
+
+            if [ $RESTART_EXIT_CODE -ne 0 ]; then
+              echo "ERROR: Failed to restart Nginx."
+              sudo systemctl status nginx --no-pager
+              echo "--- Recent Nginx journal logs ---"
+              sudo journalctl -u nginx -n 20 --no-pager
+              exit 1 # Fail the step
+            fi
+            
+            echo "--- Nginx status after successful restart ---"
+            sudo systemctl status nginx --no-pager
+            echo "--- Nginx listening ports (ss) after successful restart ---"
+            sudo ss -tulnp | grep nginx || echo "Nginx not found in ss output or not listening"
+            
+            echo "Nginx configuration applied and service restarted successfully."
+          '
+
+      - name: Generate omega.env from secrets
+        run: |
+          echo "MONGO_URI=${{ secrets.MONGO_URI }}" > omega.env
+          echo "PORT=4000" >> omega.env
+          scp -o StrictHostKeyChecking=no omega.env ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:/home/ubuntu/omega.env
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy on server (pull image & restart)
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} '
+            set -e
+            unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_PROFILE
+            export AWS_SHARED_CREDENTIALS_FILE=/home/ubuntu/.aws/credentials
+            export AWS_CONFIG_FILE=/home/ubuntu/.aws/config
+            sudo chown ubuntu:ubuntu /home/ubuntu/.aws/credentials || true
+            if ! command -v aws >/dev/null 2>&1; then
+              sudo apt-get update && sudo apt-get install -y awscli;
+            fi
+            aws sts get-caller-identity
+            aws ecr get-login-password --region eu-west-1 | sudo docker login --username AWS --password-stdin 152485877259.dkr.ecr.eu-west-1.amazonaws.com
+            sudo docker pull 152485877259.dkr.ecr.eu-west-1.amazonaws.com/omega/componenttracker:latest
+            sudo docker stop omega-app || true
+            sudo docker rm omega-app || true
+            sudo docker run -d --restart=always --name omega-app -p 4000:4000 --env-file /home/ubuntu/omega.env 152485877259.dkr.ecr.eu-west-1.amazonaws.com/omega/componenttracker:latest
+            sudo systemctl reload nginx
+          '
+
+      - name: Setup SSL with Certbot (obtain or renew)
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} '
+            echo "Setting up SSL certificate..."
+            # Ensure webroot directory exists (using /var/www/certbot as per existing workflow)
+            sudo mkdir -p /var/www/certbot
+            
+            CERT_DIR="/etc/letsencrypt/live/tracker.omega.intellitude.com"
+            CERT_PATH="$CERT_DIR/cert.pem"
+            DOMAIN_NAME="tracker.omega.intellitude.com"
+            ADMIN_EMAIL="davide.patrucco@gmail.com"
+            WEBROOT_PATH="/var/www/certbot"
+
+            if [ ! -d "$CERT_DIR" ] || [ ! -f "$CERT_PATH" ]; then
+              echo "Certificate directory $CERT_DIR or cert file $CERT_PATH does not exist."
+              echo "Attempting to obtain a new certificate for $DOMAIN_NAME."
+              sudo certbot certonly --webroot -w "$WEBROOT_PATH" -d "$DOMAIN_NAME" --email "$ADMIN_EMAIL" --agree-tos --no-eff-email --non-interactive
+            else
+              echo "Certificate $CERT_PATH exists. Checking its validity."
+              # Check if the certificate is expiring in the next 25 days (25 * 24 * 60 * 60 = 2160000 seconds)
+              DAYS_TO_EXPIRY_CHECK=25
+              SECONDS_TO_EXPIRY_CHECK=$((DAYS_TO_EXPIRY_CHECK * 24 * 60 * 60))
+
+              echo "Checking if certificate expires in the next $DAYS_TO_EXPIRY_CHECK days..."
+              # openssl x509 -checkend <seconds> exits with 0 if the certificate expires AFTER the specified seconds,
+              # and 1 if it expires WITHIN the seconds or is already expired.
+              if sudo openssl x509 -in "$CERT_PATH" -noout -checkend "$SECONDS_TO_EXPIRY_CHECK"; then
+                echo "Certificate is valid and not expiring in the next $DAYS_TO_EXPIRY_CHECK days. Skipping renewal attempt."
+              else
+                echo "Certificate is expiring in the next $DAYS_TO_EXPIRY_CHECK days or already expired. Attempting renewal."
+                sudo certbot renew --non-interactive --no-random-sleep-on-renew
+              fi
+            fi
+            echo "SSL setup process finished."
+          '
+
+      - name: Copy options-ssl-nginx.conf to server
+        run: |
+          scp -o StrictHostKeyChecking=no infra/nginx/options-ssl-nginx.conf ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:/tmp/options-ssl-nginx.conf
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} '
+            sudo mv /tmp/options-ssl-nginx.conf /etc/nginx/options-ssl-nginx.conf
+            sudo chown root:root /etc/nginx/options-ssl-nginx.conf
+            sudo chmod 644 /etc/nginx/options-ssl-nginx.conf
+          '
+
+      - name: Deploy Nginx config (enable HTTPS)
+        run: |
+          # Copy the HTTPS-enabled default.conf
+          scp -o StrictHostKeyChecking=no infra/nginx/default.conf.ssl ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:/tmp/default.conf
+          ssh -o StrictHostKeyChecking=no ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} '
+            sudo mv /tmp/default.conf /etc/nginx/conf.d/default.conf
+            sudo chown root:root /etc/nginx/conf.d/default.conf
+            sudo chmod 644 /etc/nginx/conf.d/default.conf
+            echo "--- Listing /etc/nginx/conf.d/ after copy (SSL) ---"
+            sudo ls -l /etc/nginx/conf.d/
+            echo "--- Showing /etc/nginx/conf.d/default.conf (SSL) ---"
+            sudo cat /etc/nginx/conf.d/default.conf
+            echo "--- Testing nginx config (SSL) ---"
+            if sudo nginx -t; then
+              echo "Nginx config test passed. Restarting nginx."
+              sudo systemctl restart nginx
+              sudo systemctl status nginx --no-pager
+            else
+              echo "Nginx config test failed! Not restarting nginx."
+              exit 1
+            fi
+          '

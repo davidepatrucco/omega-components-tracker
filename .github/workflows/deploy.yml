@@ -1,0 +1,75 @@
+name: Deploy to Lightsail
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build (optional)
+        run: |
+          npm ci
+          npm run build --if-present
+
+      - name: Package and deploy via SSH
+        env:
+          # choose secrets by branch: staging -> staging secrets, main -> prod secrets
+          SSH_HOST: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_HOST_STAGE || secrets.SSH_HOST }}
+          SSH_USER: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_USER_STAGE || secrets.SSH_USER }}
+          SSH_KEY: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_KEY_STAGE || secrets.SSH_KEY }}
+          DEPLOY_ENV: ${{ github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
+        run: |
+          # create a bundle containing the relevant files from omega-app
+          cd omega-app
+          # include infra scripts and compose file in the bundle
+          tar czf ../bundle.tgz Dockerfile.lightsail infra/docker-compose.lightsail.yml infra/deploy.sh infra/backup.sh .env src package*.json || true
+          cd -
+          echo "$SSH_KEY" > key && chmod 600 key
+          scp -i key -o StrictHostKeyChecking=no bundle.tgz $SSH_USER@$SSH_HOST:/home/$SSH_USER/
+          ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST <<'EOF'
+            set -e
+            tar xzf bundle.tgz
+            # make infra scripts executable if present
+            if [ -f infra/deploy.sh ]; then
+              chmod +x infra/deploy.sh || true
+            fi
+            if [ -f infra/backup.sh ]; then
+              chmod +x infra/backup.sh || true
+            fi
+
+            # prefer the lightsail compose file (support both top-level and infra/ path)
+            if [ -f docker-compose.lightsail.yml ]; then
+              docker compose -f docker-compose.lightsail.yml build
+              docker compose -f docker-compose.lightsail.yml up -d
+            elif [ -f infra/docker-compose.lightsail.yml ]; then
+              docker compose -f infra/docker-compose.lightsail.yml build
+              docker compose -f infra/docker-compose.lightsail.yml up -d
+            else
+              docker compose build
+              docker compose up -d
+            fi
+
+            # small remote smoke test: try health endpoints on common ports
+            sleep 3
+            if curl -fsS http://localhost:3000/health >/dev/null 2>&1 || curl -fsS http://localhost:4000/health >/dev/null 2>&1 ; then
+              echo "Remote health check passed"
+            else
+              echo "Remote health check failed" >&2
+              exit 1
+            fi
+            docker image prune -f
+          EOF
+        shell: bash
