@@ -13,6 +13,5 @@ archivio*
 **/.env
 **/.env.*
 **/.credentials
-!omega-app/backend/.env.omega-backend
-!omega-app/frontend/.env.omega-frontend
-
+# ✅ permetti di includere i file .env.omega-*
+!**/.env.omega-*
