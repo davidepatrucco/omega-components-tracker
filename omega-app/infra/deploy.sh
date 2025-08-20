@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-set -euo pipefail
+#set -e
+# Simple deploy helper to be executed on the server after receiving bundle.tgz
+# Usage: ./deploy.sh [compose-file]
 
-BR_DEV="develop"
-BR_STAGING="staging"
+COMPOSE=${1:-docker-compose.lightsail.yml}
 
-git fetch --all --prune
-
-# Safety: no uncommitted changes
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "❌ Working tree not clean"; exit 1
+if [ -f "$COMPOSE" ]; then
+  echo "Using compose file: $COMPOSE"
+  docker compose -f "$COMPOSE" build
+  docker compose -f "$COMPOSE" up -d
+else
+  echo "Compose file $COMPOSE not found, falling back to default docker-compose.yml"
+  docker compose build
+  docker compose up -d
 fi
 
-git checkout "$BR_STAGING"
-git pull --ff-only origin "$BR_STAGING"
-git merge --no-ff "origin/$BR_DEV" -m "chore: merge $BR_DEV → $BR_STAGING"
-git push origin "$BR_STAGING"
+echo "Pruning unused images..."
+docker image prune -f
 
-echo "✅ Pushed to $BR_STAGING (CI/CD should deploy STAGING)"
+echo "Deploy finished."
