@@ -79,6 +79,20 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" TAG=${TAG} <<'EOF'
             set -e
+            # Installa Docker se non presente
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Installazione Docker..."
+              curl -fsSL https://get.docker.com | sudo sh
+              sudo usermod -aG docker $USER
+            fi
+            # Installa AWS CLI se non presente
+            if ! command -v aws >/dev/null 2>&1; then
+              echo "Installazione AWS CLI..."
+              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+              unzip awscliv2.zip
+              sudo ./aws/install
+              rm -rf awscliv2.zip aws/
+            fi
             cd /home/$SSH_USER/omega-app/infra
             # Login a ECR (richiede AWS CLI e variabili AWS_ACCESS_KEY_ID/SECRET_KEY/REGION sul server)
             export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
