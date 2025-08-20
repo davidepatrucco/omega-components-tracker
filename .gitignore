@@ -13,8 +13,6 @@ archivio*
 **/.env
 **/.env.*
 **/.credentials
-
-# Allow custom env files
 !omega-app/backend/.env.omega-backend
 !omega-app/frontend/.env.omega-frontend
 
