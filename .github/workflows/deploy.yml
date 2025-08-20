@@ -55,8 +55,17 @@ jobs:
             SSH_KEY="${{ secrets.SSH_KEY }}"
             BUNDLE_NAME=bundle.prod.tgz
           fi
-          echo "$SSH_KEY" > key && chmod 600 key
-          scp -i key -o StrictHostKeyChecking=no "$BUNDLE_NAME" "$SSH_USER@$SSH_HOST:/home/$SSH_USER/"
+          # support either raw SSH_KEY or base64-encoded SSH_KEY_B64 (recommended)
+          if [ -n "${SSH_KEY_B64:-}" ]; then
+            echo "$SSH_KEY_B64" | base64 -d > key
+          else
+            echo "$SSH_KEY" > key
+          fi
+          chmod 600 key
+          # add host to known_hosts to avoid prompts; useful in CI
+          ssh-keyscan -H "$SSH_HOST" >> known_hosts 2>/dev/null || true
+          # use verbose scp for easier debugging on failures
+          scp -v -i key -o UserKnownHostsFile=known_hosts -o StrictHostKeyChecking=no "$BUNDLE_NAME" "$SSH_USER@$SSH_HOST:/home/$SSH_USER/"
 
       - name: Extract & run on server (docker compose)
         run: |
@@ -72,8 +81,14 @@ jobs:
             SSH_KEY="${{ secrets.SSH_KEY }}"
             BUNDLE_NAME=bundle.prod.tgz
           fi
-          echo "$SSH_KEY" > key && chmod 600 key
-          ssh -i key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" <<'EOF'
+          # support either raw SSH_KEY or base64-encoded SSH_KEY_B64
+          if [ -n "${SSH_KEY_B64:-}" ]; then
+            echo "$SSH_KEY_B64" | base64 -d > key
+          else
+            echo "$SSH_KEY" > key
+          fi
+          chmod 600 key
+          ssh -vvv -i key -o UserKnownHostsFile=known_hosts -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" <<'EOF'
             set -e
             cd /home/$SSH_USER || exit 1
             tar xzf $BUNDLE_NAME
