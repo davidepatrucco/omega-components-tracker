@@ -31,6 +31,8 @@ if [[ "$TARGET" == "staging" ]]; then
   git push "$REMOTE" "$BR_STAGING"
   echo "✅ Deploy su STAGING completato (merge $BR_DEV → $BR_STAGING)"
   echo "👉 CI/CD staging dovrebbe partire"
+  echo "Torno su branch development"
+  git checkout "$BR_DEV"
 
 elif [[ "$TARGET" == "prod" ]]; then
   if [[ -z "$TAG" ]]; then
@@ -48,6 +50,7 @@ elif [[ "$TARGET" == "prod" ]]; then
   echo "✅ Deploy su PROD completato (merge $BR_STAGING → $BR_PROD + tag $TAG)"
   echo "👉 CI/CD prod dovrebbe partire"
 
+  echo "Torno su branch development"
   git checkout "$BR_DEV"
-  echo "Torno su branch"
+
 fi
