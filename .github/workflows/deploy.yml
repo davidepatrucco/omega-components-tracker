@@ -125,11 +125,6 @@ jobs:
             cd /home/$SSH_USER/omega-app
             echo '[REMOTE] Aggiorno repo con git pull...'
             git pull || { echo '[REMOTE] ERRORE: git pull fallito'; exit 1; }
-            cd infra
-            echo '[REMOTE] Spostamento in /home/$SSH_USER/omega-app/infra...'
-            cd /home/$SSH_USER/omega-app/infra
-            echo '[REMOTE] Aggiorno repo con git pull...'
-            git pull || { echo '[REMOTE] ERRORE: git pull fallito'; exit 1; }
             echo '[REMOTE] Login a ECR...'
             export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
             export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
