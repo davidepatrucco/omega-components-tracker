@@ -159,12 +159,12 @@ jobs:
               echo '[REMOTE] Pull immagini Docker...'
               sudo docker compose -f docker-compose.lightsail.yml pull
               echo '[REMOTE] Avvio container...'
-              sudo docker compose -f docker-compose.lightsail.yml up -d
+              sudo docker compose -f docker-compose.lightsail.yml up -d --no-build
             elif command -v docker-compose >/dev/null 2>&1; then
               echo '[REMOTE] Pull immagini Docker...'
               sudo docker-compose -f docker-compose.lightsail.yml pull
               echo '[REMOTE] Avvio container...'
-              sudo docker-compose -f docker-compose.lightsail.yml up -d
+              sudo docker-compose -f docker-compose.lightsail.yml up -d --no-build
             else
               echo '[REMOTE] ERRORE: Nessun comando docker compose disponibile!'; exit 1
             fi
