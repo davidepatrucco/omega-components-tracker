@@ -85,7 +85,7 @@ jobs:
               sudo sed -i '/download.docker.com.*noble/d' /etc/apt/sources.list
               sudo sed -i '/download.docker.com.*noble/d' /etc/apt/sources.list.d/*.list 2>/dev/null || true
               echo "Installazione Docker via apt-get..."
-              sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin && sudo usermod -aG docker $USER
+              sudo apt-get update && sudo apt-get install -y docker.io && sudo usermod -aG docker $USER
               # Se ancora non installato, prova lo script ufficiale
               if ! command -v docker >/dev/null 2>&1; then
                 echo "Fallback: installazione Docker via get.docker.com..."
