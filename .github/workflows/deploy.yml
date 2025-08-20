@@ -81,9 +81,14 @@ jobs:
             set -e
             # Installa Docker se non presente
             if ! command -v docker >/dev/null 2>&1; then
-              echo "Installazione Docker..."
-              curl -fsSL https://get.docker.com | sudo sh
-              sudo usermod -aG docker $USER
+              echo "Installazione Docker via apt-get..."
+              sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin && sudo usermod -aG docker $USER
+              # Se ancora non installato, prova lo script ufficiale
+              if ! command -v docker >/dev/null 2>&1; then
+                echo "Fallback: installazione Docker via get.docker.com..."
+                curl -fsSL https://get.docker.com | sudo sh
+                sudo usermod -aG docker $USER
+              fi
             fi
             # Installa AWS CLI se non presente
             if ! command -v aws >/dev/null 2>&1; then
