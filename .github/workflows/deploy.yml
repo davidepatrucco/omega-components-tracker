@@ -130,6 +130,7 @@ jobs:
               else
                 echo '[REMOTE] omega-app NON è una git repo, la elimino e faccio git clone...'
                 rm -rf omega-app
+                cd /home/$SSH_USER
                 git clone https://github.com/davidepatrucco/omega-components-tracker.git omega-app || { echo '[REMOTE] ERRORE: git clone fallito'; exit 1; }
                 cd omega-app
               fi
