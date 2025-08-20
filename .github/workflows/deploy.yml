@@ -75,12 +75,10 @@ jobs:
             SSH_HOST="${{ secrets.SSH_HOST_STAGE }}"
             SSH_USER="${{ secrets.SSH_USER_STAGE }}"
             echo "[INFO] Deploy su STAGING: SSH_HOST=$SSH_HOST, SSH_USER=$SSH_USER"
-            touch /home/$SSH_USER/omega-components-tracker/omega-app/infra/.env
           else
             SSH_HOST="${{ secrets.SSH_HOST }}"
             SSH_USER="${{ secrets.SSH_USER }}"
             echo "[INFO] Deploy su PRODUCTION: SSH_HOST=$SSH_HOST, SSH_USER=$SSH_USER"
-            touch /home/$SSH_USER/omega-components-tracker/omega-app/infra/.env
           fi
 
           # Validate SSH parameters before opening the connection
@@ -155,6 +153,8 @@ jobs:
             aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin 152485877259.dkr.ecr.us-east-1.amazonaws.com || { echo '[REMOTE] ERRORE: docker login fallito'; exit 1; }
 
             cd /home/$SSH_USER/omega-components-tracker/omega-app/infra
+            # Ensure .env exists in the infra directory on the remote host
+            touch .env
             if docker compose version >/dev/null 2>&1; then
               echo '[REMOTE] Pull immagini Docker...'
               sudo docker compose -f docker-compose.lightsail.yml pull
