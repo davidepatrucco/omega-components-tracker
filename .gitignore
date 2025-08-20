@@ -15,3 +15,4 @@ archivio*
 **/.credentials
 # ✅ permetti di includere i file .env.omega-*
 !**/.env.omega-*
+

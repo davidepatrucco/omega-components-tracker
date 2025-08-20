@@ -76,6 +76,7 @@ jobs:
             echo "[INFO] Deploy su STAGING: SSH_HOST=$SSH_HOST, SSH_USER=$SSH_USER"
           else
             SSH_HOST="${{ secrets.SSH_HOST }}"
+                      touch /home/$SSH_USER/omega-components-tracker/omega-app/infra/.env
             SSH_USER="${{ secrets.SSH_USER }}"
             echo "[INFO] Deploy su PRODUCTION: SSH_HOST=$SSH_HOST, SSH_USER=$SSH_USER"
           fi
@@ -83,8 +84,10 @@ jobs:
           echo "[INFO] Avvio SSH verso $SSH_USER@$SSH_HOST con TAG=${TAG}..."
           ssh -tt -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "bash -l -c \"
             set -euo pipefail
+                        touch /home/$SSH_USER/omega-components-tracker/omega-app/infra/.env
             set -x
             echo '[REMOTE] Inizio deploy su \$(hostname) come utente \$(whoami)'
+                        touch /home/$SSH_USER/omega-components-tracker/omega-app/infra/.env
             echo '[REMOTE] Verifica Docker...'
             if ! command -v docker >/dev/null 2>&1; then
               echo '[REMOTE] Rimozione repo Docker non valido (noble)...'
