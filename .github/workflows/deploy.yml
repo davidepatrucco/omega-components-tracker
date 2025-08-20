@@ -83,6 +83,14 @@ jobs:
             touch /home/$SSH_USER/omega-components-tracker/omega-app/infra/.env
           fi
 
+          # Validate SSH parameters before opening the connection
+          if [ -z "${SSH_USER:-}" ] || [ -z "${SSH_HOST:-}" ]; then
+            echo "[ERROR] SSH_USER or SSH_HOST is empty. Aborting deploy."
+            if [ -z "${SSH_USER:-}" ]; then echo "[ERROR] SSH_USER is empty"; fi
+            if [ -z "${SSH_HOST:-}" ]; then echo "[ERROR] SSH_HOST is empty"; fi
+            exit 1
+          fi
+
           echo "[INFO] Avvio SSH verso $SSH_USER@$SSH_HOST con TAG=${TAG}..."
           ssh -tt -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "bash -l -c \"
             set -euo pipefail
