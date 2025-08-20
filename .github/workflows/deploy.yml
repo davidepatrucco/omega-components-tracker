@@ -33,30 +33,47 @@ jobs:
           elif [ -f .env ]; then
             cp .env omega-app/backend/.env
           fi
-          tar czf $BUNDLE_NAME omega-app infra
+          # Create bundle. Include top-level infra if present, otherwise omega-app already contains infra
+          if [ -d infra ]; then
+            tar czf $BUNDLE_NAME omega-app infra
+          else
+            tar czf $BUNDLE_NAME omega-app
+          fi
           ls -l $BUNDLE_NAME
 
       - name: Upload bundle to server
-        env:
-          SSH_HOST: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_HOST_STAGE || secrets.SSH_HOST }}
-          SSH_USER: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_USER_STAGE || secrets.SSH_USER }}
-          SSH_KEY: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_KEY_STAGE || secrets.SSH_KEY }}
         run: |
           set -euo pipefail
-          BUNDLE_NAME=$( [ "${{ github.ref }}" = 'refs/heads/staging' ] && echo bundle.staging.tgz || echo bundle.prod.tgz )
+          if [ "${GITHUB_REF}" = 'refs/heads/staging' ]; then
+            SSH_HOST="${{ secrets.SSH_HOST_STAGE }}"
+            SSH_USER="${{ secrets.SSH_USER_STAGE }}"
+            SSH_KEY="${{ secrets.SSH_KEY_STAGE }}"
+            BUNDLE_NAME=bundle.staging.tgz
+          else
+            SSH_HOST="${{ secrets.SSH_HOST }}"
+            SSH_USER="${{ secrets.SSH_USER }}"
+            SSH_KEY="${{ secrets.SSH_KEY }}"
+            BUNDLE_NAME=bundle.prod.tgz
+          fi
           echo "$SSH_KEY" > key && chmod 600 key
-          scp -i key -o StrictHostKeyChecking=no $BUNDLE_NAME $SSH_USER@$SSH_HOST:/home/$SSH_USER/
+          scp -i key -o StrictHostKeyChecking=no "$BUNDLE_NAME" "$SSH_USER@$SSH_HOST:/home/$SSH_USER/"
 
       - name: Extract & run on server (docker compose)
-        env:
-          SSH_HOST: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_HOST_STAGE || secrets.SSH_HOST }}
-          SSH_USER: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_USER_STAGE || secrets.SSH_USER }}
-          SSH_KEY: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_KEY_STAGE || secrets.SSH_KEY }}
         run: |
           set -euo pipefail
-          BUNDLE_NAME=$( [ "${{ github.ref }}" = 'refs/heads/staging' ] && echo bundle.staging.tgz || echo bundle.prod.tgz )
+          if [ "${GITHUB_REF}" = 'refs/heads/staging' ]; then
+            SSH_HOST="${{ secrets.SSH_HOST_STAGE }}"
+            SSH_USER="${{ secrets.SSH_USER_STAGE }}"
+            SSH_KEY="${{ secrets.SSH_KEY_STAGE }}"
+            BUNDLE_NAME=bundle.staging.tgz
+          else
+            SSH_HOST="${{ secrets.SSH_HOST }}"
+            SSH_USER="${{ secrets.SSH_USER }}"
+            SSH_KEY="${{ secrets.SSH_KEY }}"
+            BUNDLE_NAME=bundle.prod.tgz
+          fi
           echo "$SSH_KEY" > key && chmod 600 key
-          ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST <<'EOF'
+          ssh -i key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" <<'EOF'
             set -e
             cd /home/$SSH_USER || exit 1
             tar xzf $BUNDLE_NAME
