@@ -22,33 +22,31 @@ services:
     restart: unless-stopped
 
   omega_frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    container_name: omega_frontend
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.omega_frontend.rule=Host(`tuodominio.com`)"
-      - "traefik.http.routers.omega_frontend.entrypoints=websecure"
-      - "traefik.http.routers.omega_frontend.tls.certresolver=le"
-    expose:
-      - "80"
-    restart: unless-stopped
+    image: ghcr.io/davidepatrucco/omega-frontend:${TAG}
+      image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-frontend:${TAG}
+      container_name: omega_frontend
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.omega_frontend.rule=Host(`tuodominio.com`)"
+        - "traefik.http.routers.omega_frontend.entrypoints=websecure"
+        - "traefik.http.routers.omega_frontend.tls.certresolver=le"
+      expose:
+        - "80"
+      restart: unless-stopped
 
   omega_backend:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
-    container_name: omega_backend
-    env_file: ../backend/.env
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.omega_backend.rule=Host(`api.tuodominio.com`)"
-      - "traefik.http.routers.omega_backend.entrypoints=websecure"
-      - "traefik.http.routers.omega_backend.tls.certresolver=le"
-    expose:
-      - "4000"
-    restart: unless-stopped
+    image: ghcr.io/davidepatrucco/omega-backend:${TAG}
+      image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-backend:${TAG}
+      container_name: omega_backend
+      env_file: ../backend/.env
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.omega_backend.rule=Host(`api.tuodominio.com`)"
+        - "traefik.http.routers.omega_backend.entrypoints=websecure"
+        - "traefik.http.routers.omega_backend.tls.certresolver=le"
+      expose:
+        - "4000"
+      restart: unless-stopped
 
 volumes:
   letsencrypt:
