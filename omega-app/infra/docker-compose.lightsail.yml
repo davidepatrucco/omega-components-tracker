@@ -9,7 +9,7 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.le.acme.httpchallenge=true"
       - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.le.acme.email=admin@tuodominio.com"
+      - "--certificatesresolvers.le.acme.email=admin@tracker.omega.intellitude.com"
       - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
@@ -29,7 +29,7 @@ services:
     env_file: ../frontend/.env.omega-frontend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.omega_frontend.rule=Host(`tuodominio.com`)"
+      - "traefik.http.routers.omega_frontend.rule=Host(`tracker.omega.intellitude.com`)"
       - "traefik.http.routers.omega_frontend.entrypoints=websecure"
       - "traefik.http.routers.omega_frontend.tls.certresolver=le"
     expose:

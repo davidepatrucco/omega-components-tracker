@@ -205,5 +205,5 @@ jobs:
             fi
 
             echo '[REMOTE] Stato container:'
-            docker ps -a
+            sudo docker ps -a
             echo '[REMOTE] Fine deploy.'\""
