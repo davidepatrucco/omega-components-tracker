@@ -129,6 +129,7 @@ jobs:
                 git pull || { echo '[REMOTE] ERRORE: git pull fallito'; exit 1; }
               else
                 echo '[REMOTE] omega-app NON è una git repo, la elimino e faccio git clone...'
+                rm -rf omega-components-tracker
                 git clone https://github.com/davidepatrucco/omega-components-tracker.git omega-components-tracker || { echo '[REMOTE] ERRORE: git clone fallito'; exit 1; }
               fi
             echo '[REMOTE] Login a ECR...'
