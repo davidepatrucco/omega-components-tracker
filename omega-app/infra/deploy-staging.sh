@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REMOTE="git@github.com:davidepatrucco/omega-tracker.git"
+REMOTE="git@github.com:davidepatrucco/omega-components-tracker.git"
 BR_DEV="development"
 BR_STAGING="staging"
 
