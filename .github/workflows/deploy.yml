@@ -103,7 +103,7 @@ jobs:
               sudo usermod -aG docker "$USER" || true
             fi
             cd omega-app/infra
-            # try both compose formats
-            docker compose -f docker-compose.lightsail.yml pull || true
-            docker compose -f docker-compose.lightsail.yml up -d --build
+            # try both compose formats (use sudo to avoid permission issues)
+            sudo docker compose -f docker-compose.lightsail.yml pull || true
+            sudo docker compose -f docker-compose.lightsail.yml up -d --build
           EOF
