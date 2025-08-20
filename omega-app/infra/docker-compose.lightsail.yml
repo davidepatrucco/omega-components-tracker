@@ -24,6 +24,7 @@ services:
   omega_frontend:
     image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:staging
     container_name: omega_frontend
+    env_file: ../frontend/.env.omega-frontend
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.omega_frontend.rule=Host(`tuodominio.com`)"
@@ -36,7 +37,7 @@ services:
   omega_backend:
     image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:staging
     container_name: omega_backend
-    env_file: ../backend/.env
+    env_file: ../backend/.env.omega-backend
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.omega_backend.rule=Host(`api.tuodominio.com`)"
