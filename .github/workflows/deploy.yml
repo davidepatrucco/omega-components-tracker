@@ -72,6 +72,7 @@ jobs:
           echo "[INFO] Branch: ${GITHUB_REF}"
           
           
+                      touch .env
           if [ "${GITHUB_REF}" = "refs/heads/staging" ]; then
             SSH_HOST="${{ secrets.SSH_HOST_STAGE }}"
             SSH_USER="${{ secrets.SSH_USER_STAGE }}"
