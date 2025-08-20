@@ -81,6 +81,13 @@ jobs:
             echo "[INFO] Deploy su PRODUCTION: SSH_HOST=$SSH_HOST, SSH_USER=$SSH_USER"
           fi
 
+          # decide which branch to deploy (expanded before ssh)
+          if [ "${GITHUB_REF}" = "refs/heads/staging" ]; then
+            DEPLOY_BRANCH=staging
+          else
+            DEPLOY_BRANCH=main
+          fi
+
           # Validate SSH parameters before opening the connection
           if [ -z "${SSH_USER:-}" ] || [ -z "${SSH_HOST:-}" ]; then
             echo "[ERROR] SSH_USER or SSH_HOST is empty. Aborting deploy."
@@ -132,16 +139,19 @@ jobs:
             else
               echo '[REMOTE] AWS CLI già presente: $(aws --version)'
             fi
-            echo '[REMOTE] Spostamento in /home/$SSH_USER/omega-app...'
+            echo '[REMOTE] Spostamento in /home/$SSH_USER...'
               cd /home/$SSH_USER
-              if [ -d "omega-app/.git" ]; then
-                echo '[REMOTE] omega-app è una git repo, faccio git pull...'
-                cd omega-app
-                git pull || { echo '[REMOTE] ERRORE: git pull fallito'; exit 1; }
+              # Ensure repository exists and is on the correct branch. Prefer fetch+reset if present.
+              if [ -d "omega-components-tracker/.git" ]; then
+                echo '[REMOTE] omega-components-tracker repo found, fetching and resetting to origin/'"${DEPLOY_BRANCH}""'
+                cd omega-components-tracker
+                git fetch origin || { echo '[REMOTE] ERRORE: git fetch fallito'; exit 1; }
+                git reset --hard origin/'"${DEPLOY_BRANCH}""' || { echo '[REMOTE] ERRORE: git reset fallito'; exit 1; }
               else
-                echo '[REMOTE] omega-app NON è una git repo, la elimino e faccio git clone...'
+                echo '[REMOTE] Clono repository e checkout branch '"${DEPLOY_BRANCH}""'
                 rm -rf omega-components-tracker
-                git clone https://github.com/davidepatrucco/omega-components-tracker.git omega-components-tracker || { echo '[REMOTE] ERRORE: git clone fallito'; exit 1; }
+                git clone --branch '"${DEPLOY_BRANCH}""' https://github.com/davidepatrucco/omega-components-tracker.git omega-components-tracker || { echo '[REMOTE] ERRORE: git clone fallito'; exit 1; }
+                cd omega-components-tracker
               fi
             echo '[REMOTE] Login a ECR...'
             export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
@@ -155,6 +165,13 @@ jobs:
             cd /home/$SSH_USER/omega-components-tracker/omega-app/infra
             # Ensure .env exists in the infra directory on the remote host
             touch .env
+            echo '[REMOTE] Debug: current dir and files:'
+            pwd
+            ls -la
+            echo '[REMOTE] --- docker-compose.lightsail.yml ---'
+            sed -n '1,200p' docker-compose.lightsail.yml || true
+            echo '[REMOTE] --- resolved docker compose config ---'
+            (sudo docker compose -f docker-compose.lightsail.yml config || sudo docker-compose -f docker-compose.lightsail.yml config) || true
             if docker compose version >/dev/null 2>&1; then
               echo '[REMOTE] Pull immagini Docker...'
               sudo docker compose -f docker-compose.lightsail.yml pull
