@@ -81,8 +81,8 @@ jobs:
           fi
 
           echo "[INFO] Avvio SSH verso $SSH_USER@$SSH_HOST con TAG=${TAG}..."
-          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" TAG=${TAG} <<'EOF'
-            set -e
+          ssh -tt -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" TAG=${TAG} <<'EOF'
+            set -euo pipefail
             echo "[REMOTE] Inizio deploy su \\$(hostname) come utente \\$(whoami)"
             echo "[REMOTE] Verifica Docker..."
             if ! command -v docker >/dev/null 2>&1; then
