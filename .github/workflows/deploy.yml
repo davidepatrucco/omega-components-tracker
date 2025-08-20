@@ -92,8 +92,18 @@ jobs:
             set -e
             cd /home/$SSH_USER || exit 1
             tar xzf $BUNDLE_NAME
+            # install docker if missing (non-interactive, Debian/Ubuntu)
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Docker not found on host, attempting install (requires sudo)..."
+              sudo apt-get update -y
+              # install docker engine and compose plugin
+              sudo apt-get install -y docker.io docker-compose-plugin || true
+              sudo systemctl enable --now docker || true
+              # add current user to docker group (may require re-login to take effect)
+              sudo usermod -aG docker "$USER" || true
+            fi
             cd omega-app/infra
-            # try both compose formats
-            docker compose -f docker-compose.lightsail.yml pull || true
-            docker compose -f docker-compose.lightsail.yml up -d --build
+            # try both compose formats (use sudo to avoid permission issues)
+            sudo docker compose -f docker-compose.lightsail.yml pull || true
+            sudo docker compose -f docker-compose.lightsail.yml up -d --build
           EOF
