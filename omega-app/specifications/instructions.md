@@ -401,13 +401,6 @@ Qui elenco le pagine React principali presenti in `component-tracker/frontend/sr
   - API: `GET /components` + aggregazioni lato frontend oppure endpoint dedicati (consigliato: `GET /reporting/summary` se il backend fornisce).
   - Comportamento: filtri per range temporale e commessa; export immagini o CSV per report.
 
-- `BarcodeScannerPage.jsx` / `BarcodeWithText.jsx`
-  - File: `component-tracker/frontend/src/BarcodeScannerPage.jsx`, `BarcodeWithText.jsx`
-  - Layout: area video per scanner (full-width) + box con risultati rilevati e pulsanti di azione (apri componente, crea componente se non trovato).
-  - Icone: `BarcodeOutlined`, `CameraOutlined`.
-  - API: `GET /components?barcode=:code` per lookup, `POST /components` per creazione rapida.
-  - Comportamento: usa `@zxing/browser` o `zbar.wasm` per catturare barcode; al riconoscimento propone azioni (naviga a Dettaglio o popola form di creazione).
-
 - `App.jsx` / `main.jsx` (shell applicativa)
   - File: `component-tracker/frontend/src/App.jsx`, `main.jsx`
   - Layout: AntD `Layout` con `Sider` (sidebar nav), `Header` (quicksearch + user menu), `Content` wrapper; importa `antd/dist/reset.css` e `index.css` (Tailwind + overrides).
@@ -421,11 +414,11 @@ Qui elenco le pagine React principali presenti in `component-tracker/frontend/sr
 
 Note tecniche comuni
 - Styling: seguire le regole R-STY-001..R-STY-006: AntD per componenti, Tailwind per utilities.
-- File upload / DDT: usare AntD `Upload` in modalità `beforeUpload` che costruisce `FormData` con i campi `ddtFile`, `ddtNumber`, `ddtDate`, invia a `PUT /components/:id` o endpoint dedicato.
+- File upload: usare AntD `Upload` in modalità `beforeUpload` che costruisce `FormData` con i campi `ddtFile`, `ddtNumber`, `ddtDate`, invia a `PUT /components/:id` o endpoint dedicato.
 - AllowedStatuses: la UI mostra `allowedStatuses` ricevuto dal componente backend e può presentare una subset "consigliata" (es. next states) ma invierà sempre il valore scelto al backend per validazione.
 - Permessi: disabilitare pulsanti/azioni basate sul `profilo` e sulle regole in `WorkStatus.profili`.
 
-## 8) Next steps consigliati per il bootstrap del nuovo progetto
+## 99) Next steps consigliati per il bootstrap del nuovo progetto
 
 1. Creare repository skeleton (frontend + backend) con gli stessi percorsi e package.json minimi.
 2. Implementare i modelli Mongoose (Commessa, Component, Documento, WorkStatus, User) copiando i campi chiave qui sopra.
