@@ -103,16 +103,10 @@ jobs:
 
             echo "[REMOTE] Verifica docker compose/plugin..."
             if ! command -v docker-compose >/dev/null 2>&1 && ! docker compose version >/dev/null 2>&1; then
-              echo "[REMOTE] Provo installazione docker-compose-plugin via apt-get..."
-              sudo apt-get update && sudo apt-get install -y docker-compose-plugin || true
-              if ! docker compose version >/dev/null 2>&1; then
-                echo "[REMOTE] Fallback: installazione binario legacy docker-compose..."
-                sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                sudo chmod +x /usr/local/bin/docker-compose
-                echo "[REMOTE] docker-compose installato: $([ -x /usr/local/bin/docker-compose ] && /usr/local/bin/docker-compose --version || echo 'fallito')"
-              else
-                echo "[REMOTE] docker compose plugin installato: $(docker compose version)"
-              fi
+              echo "[REMOTE] Installazione binario legacy docker-compose..."
+              sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+              echo "[REMOTE] docker-compose installato: $([ -x /usr/local/bin/docker-compose ] && /usr/local/bin/docker-compose --version || echo 'fallito')"
             fi
 
             # Scegli comando compose
