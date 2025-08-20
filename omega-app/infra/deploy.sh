@@ -44,6 +44,10 @@ elif [[ "$TARGET" == "prod" ]]; then
   git merge --no-ff "$REMOTE/$BR_STAGING" -m "release: $TAG"
   git tag -a "$TAG" -m "Release $TAG"
   git push "$REMOTE" "$BR_PROD" --tags
+  
   echo "✅ Deploy su PROD completato (merge $BR_STAGING → $BR_PROD + tag $TAG)"
   echo "👉 CI/CD prod dovrebbe partire"
+
+  git checkout "$BR_DEV"
+  echo "Torno su branch"
 fi

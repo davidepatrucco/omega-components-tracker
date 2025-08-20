@@ -15,49 +15,53 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
+      - name: Prepare bundle for deploy
         run: |
-          IMAGE_NAME=myapp
-          IMAGE_TAG=${GITHUB_SHA}
-          docker build -t $IMAGE_NAME:$IMAGE_TAG .
+          set -euo pipefail
+          # choose env file based on branch
+          if [ "${{ github.ref }}" = 'refs/heads/staging' ]; then
+            ENV_FILE=.env.staging
+            BUNDLE_NAME=bundle.staging.tgz
+          else
+            ENV_FILE=.env.prod
+            BUNDLE_NAME=bundle.prod.tgz
+          fi
+          echo "Using env file: $ENV_FILE"
+          # ensure backend env exists in repo, fallback to .env
+          if [ -f "$ENV_FILE" ]; then
+            cp "$ENV_FILE" omega-app/backend/.env
+          elif [ -f .env ]; then
+            cp .env omega-app/backend/.env
+          fi
+          tar czf $BUNDLE_NAME omega-app infra
+          ls -l $BUNDLE_NAME
 
-          # salva immagine in un tar.gz
-          docker save $IMAGE_NAME:$IMAGE_TAG | gzip > image.tar.gz
-
-      - name: Upload image to server
+      - name: Upload bundle to server
         env:
           SSH_HOST: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_HOST_STAGE || secrets.SSH_HOST }}
           SSH_USER: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_USER_STAGE || secrets.SSH_USER }}
           SSH_KEY: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_KEY_STAGE || secrets.SSH_KEY }}
         run: |
+          set -euo pipefail
+          BUNDLE_NAME=$( [ "${{ github.ref }}" = 'refs/heads/staging' ] && echo bundle.staging.tgz || echo bundle.prod.tgz )
           echo "$SSH_KEY" > key && chmod 600 key
-          scp -i key -o StrictHostKeyChecking=no image.tar.gz $SSH_USER@$SSH_HOST:/home/$SSH_USER/
+          scp -i key -o StrictHostKeyChecking=no $BUNDLE_NAME $SSH_USER@$SSH_HOST:/home/$SSH_USER/
 
-      - name: Load & Run image on server
+      - name: Extract & run on server (docker compose)
         env:
           SSH_HOST: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_HOST_STAGE || secrets.SSH_HOST }}
           SSH_USER: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_USER_STAGE || secrets.SSH_USER }}
           SSH_KEY: ${{ github.ref == 'refs/heads/staging' && secrets.SSH_KEY_STAGE || secrets.SSH_KEY }}
         run: |
+          set -euo pipefail
+          BUNDLE_NAME=$( [ "${{ github.ref }}" = 'refs/heads/staging' ] && echo bundle.staging.tgz || echo bundle.prod.tgz )
           echo "$SSH_KEY" > key && chmod 600 key
           ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST <<'EOF'
             set -e
-            IMAGE_NAME=myapp
-            IMAGE_TAG=${GITHUB_SHA}
-
-            # load new image
-            docker load < image.tar.gz
-
-            # stop and remove old container if exists
-            docker stop $IMAGE_NAME || true
-            docker rm $IMAGE_NAME || true
-
-            # run new container (esponi porta 80 → 3000, modifica se serve)
-            docker run -d --name $IMAGE_NAME -p 80:3000 $IMAGE_NAME:$IMAGE_TAG
-
-            # cleanup vecchie immagini
-            docker image prune -f
+            cd /home/$SSH_USER || exit 1
+            tar xzf $BUNDLE_NAME
+            cd omega-app/infra
+            # try both compose formats
+            docker compose -f docker-compose.lightsail.yml pull || true
+            docker compose -f docker-compose.lightsail.yml up -d --build
           EOF
