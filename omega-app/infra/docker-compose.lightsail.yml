@@ -21,7 +21,7 @@ services:
       - "letsencrypt:/letsencrypt"
     restart: unless-stopped
 
-
+  
 
   omega_frontend:
     image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:staging

@@ -66,7 +66,25 @@ jobs:
           ssh-private-key: |
             ${{ github.ref == 'refs/heads/staging' && secrets.SSH_KEY_STAGE || secrets.SSH_KEY }}
 
-      # 🚀 Deploy su Lightsail
+      # 🔥 Stop & disable Bitnami stack (Apache, Redis, etc.)
+      - name: Disable Bitnami stack on Lightsail
+        run: |
+          echo "[INFO] Disabilito Bitnami stack (Apache/Redis) su ${{ secrets.SSH_HOST }}..."
+          ssh -tt -o StrictHostKeyChecking=no "${{ github.ref == 'refs/heads/staging' && secrets.SSH_USER_STAGE || secrets.SSH_USER }}@${{ github.ref == 'refs/heads/staging' && secrets.SSH_HOST_STAGE || secrets.SSH_HOST }}" "bash -l -c '
+            set -euo pipefail
+            if [ -x /opt/bitnami/ctlscript.sh ]; then
+              echo \"[REMOTE] Stop Bitnami stack...\"
+              sudo /opt/bitnami/ctlscript.sh stop || true
+            fi
+            if systemctl list-unit-files | grep -q bitnami.service; then
+              echo \"[REMOTE] Disabilito bitnami.service...\"
+              sudo systemctl stop bitnami.service || true
+              sudo systemctl disable bitnami.service || true
+            fi
+            echo \"[REMOTE] Bitnami stack disattivata.\"
+          '"
+
+            # 🚀 Deploy su Lightsail
       - name: Run remote docker compose
         run: |
           echo "[INFO] Branch: ${GITHUB_REF}"
