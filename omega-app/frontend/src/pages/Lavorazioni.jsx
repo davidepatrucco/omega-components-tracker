@@ -20,7 +20,7 @@ export default function Lavorazioni(){
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/stats');
+      const response = await api.get('/api/stats');
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
