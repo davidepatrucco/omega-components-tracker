@@ -148,8 +148,8 @@ export default function Lavorazioni(){
                     </Text>
                   </div>
 
-                  {/* Barcode */}
-                  {comp.barcode && (
+                  {/* Barcode - shown only when there are treatments */}
+                  {comp.barcode && comp.trattamenti && comp.trattamenti.length > 0 && (
                     <div style={{ 
                       marginBottom: 12, 
                       textAlign: 'center',
