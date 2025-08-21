@@ -20,4 +20,6 @@ dist/
 **/.credentials
 # ✅ permetti di includere i file .env.omega-*
 !**/.env.omega-*
+# ✅ permetti di includere .env.example
+!.env.example
 
