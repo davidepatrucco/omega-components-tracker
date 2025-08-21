@@ -103,13 +103,24 @@ const DettaglioCommessa = () => {
     try {
       setLoading(true);
       
+      console.log('[Frontend] fetchData called, commessa ID:', id);
+      
       // Recupera la commessa
       const commessaResponse = await api.get(`/api/commesse/${id}`);
       setCommessa(commessaResponse.data);
       
       // Recupera i componenti per questa commessa
       const componentsResponse = await api.get(`/api/components/commessa/${id}`);
-      setComponents(componentsResponse.data || []);
+      console.log('[Frontend] fetchData - received components:', componentsResponse.data?.length);
+      console.log('[Frontend] fetchData - components sample:', componentsResponse.data?.[0]);
+      
+      // Aggiungi timestamp per forzare re-render
+      const componentsWithTimestamp = (componentsResponse.data || []).map(comp => ({
+        ...comp,
+        _fetchTimestamp: Date.now()
+      }));
+      
+      setComponents(componentsWithTimestamp);
       
     } catch (error) {
       console.error('Error loading data:', error);
@@ -198,8 +209,11 @@ const DettaglioCommessa = () => {
           return; // Esce dalla funzione save, la modale gestirà il salvataggio
         }
         
+        // Rimuovi solo i campi gestiti automaticamente dal backend
+        const { history, createdAt, updatedAt, __v, _fetchTimestamp, ...componentDataToSend } = componentToUpdate;
+        
         const updatedData = {
-          ...componentToUpdate,
+          ...componentDataToSend,
           ...row
         };
         
@@ -231,9 +245,11 @@ const DettaglioCommessa = () => {
     try {
       const { componentId, currentStatus, newStatus, component, otherChanges } = statusChangeModal;
       
-      // Prepara i dati per l'aggiornamento
+      // Prepara i dati per l'aggiornamento - ESCLUDI solo i campi gestiti automaticamente dal backend
+      const { history, createdAt, updatedAt, __v, _fetchTimestamp, ...componentDataToSend } = component;
+      
       const updatedData = {
-        ...component,
+        ...componentDataToSend,
         ...otherChanges, // Altri campi modificati nella tabella
         status: newStatus,
         statusChangeNote: values.note || '',
@@ -248,7 +264,9 @@ const DettaglioCommessa = () => {
       
       if (response.status === 200) {
         antdMessage.success(`Stato cambiato da "${getStatusLabel(currentStatus)}" a "${getStatusLabel(newStatus)}"`);
-        fetchData();
+        console.log('[Frontend] Status change successful, calling fetchData...');
+        await fetchData();
+        console.log('[Frontend] fetchData completed after status change');
         setStatusChangeModal({ open: false, componentId: null, currentStatus: '', newStatus: '', component: null });
         statusChangeForm.resetFields();
         setEditingKey('');
@@ -832,7 +850,7 @@ const DettaglioCommessa = () => {
             {/* Cerca DDT nei dati history */}
             {(() => {
               const historyWithDdt = detailsModal.component.history?.filter(h => 
-                (h.to === '6' || h.to?.includes(':ARR')) && (h.ddt_number || h.ddt_date)
+                (h.to === '6' || h.to?.includes(':ARR')) && (h.ddt && (h.ddt.number || h.ddt.date))
               ) || [];
               
               if (historyWithDdt.length > 0) {
@@ -849,12 +867,12 @@ const DettaglioCommessa = () => {
                       }}>
                         <div style={{ marginBottom: 8 }}>
                           <Text strong>Numero DDT: </Text>
-                          <Text>{historyItem.ddt_number || 'Non specificato'}</Text>
+                          <Text>{historyItem.ddt?.number || 'Non specificato'}</Text>
                         </div>
                         <div style={{ marginBottom: 8 }}>
                           <Text strong>Data DDT: </Text>
                           <Text>
-                            {historyItem.ddt_date ? new Date(historyItem.ddt_date).toLocaleDateString('it-IT') : 'Non specificata'}
+                            {historyItem.ddt?.date ? new Date(historyItem.ddt.date).toLocaleDateString('it-IT') : 'Non specificata'}
                           </Text>
                         </div>
                         <div style={{ fontSize: '12px', color: '#666' }}>
@@ -882,12 +900,12 @@ const DettaglioCommessa = () => {
                       }}>
                         <div style={{ marginBottom: 8 }}>
                           <Text strong>Numero DDT: </Text>
-                          <Text>{ddt.ddt_number || 'Non specificato'}</Text>
+                          <Text>{ddt.number || 'Non specificato'}</Text>
                         </div>
                         <div style={{ marginBottom: 8 }}>
                           <Text strong>Data DDT: </Text>
                           <Text>
-                            {ddt.ddt_date ? new Date(ddt.ddt_date).toLocaleDateString('it-IT') : 'Non specificata'}
+                            {ddt.date ? new Date(ddt.date).toLocaleDateString('it-IT') : 'Non specificata'}
                           </Text>
                         </div>
                         {ddt.createdBy && (

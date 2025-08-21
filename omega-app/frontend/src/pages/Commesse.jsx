@@ -145,6 +145,29 @@ export default function Commesse() {
   };
 
   const columns = [
+    // Colonna dettaglio all'inizio
+    {
+      title: '',
+      key: 'detail',
+      width: 50,
+      render: (_, record) => {
+        if (isEditing(record)) return null;
+        return (
+          <Tooltip title="Dettaglio commessa">
+            <Button
+              icon={<EyeOutlined />}
+              shape="circle"
+              size="small"
+              type="text"
+              onClick={e => {
+                e.stopPropagation();
+                if (record._id) navigate(`/commesse/${record._id}`);
+              }}
+            />
+          </Tooltip>
+        );
+      }
+    },
     ...columnsDef.map(col => ({
       ...col,
       sorter: col.sorter,
@@ -158,7 +181,7 @@ export default function Commesse() {
     {
       title: 'Azioni',
       key: 'actions',
-      width: 140,
+      width: 120,
       render: (_, record) => {
         const editable = isEditing(record);
         return editable ? (
@@ -172,17 +195,6 @@ export default function Commesse() {
           </Space>
         ) : (
           <Space>
-            <Tooltip title="Dettaglio commessa">
-              <Button
-                icon={<EyeOutlined />}
-                shape="circle"
-                size="small"
-                onClick={e => {
-                  e.stopPropagation();
-                  if (record._id) navigate(`/commesse/${record._id}`);
-                }}
-              />
-            </Tooltip>
             <Tooltip title="Modifica">
               <Button icon={<EditOutlined />} shape="circle" size="small" onClick={e => { e.stopPropagation(); edit(record); }} />
             </Tooltip>
@@ -202,7 +214,7 @@ export default function Commesse() {
   ];
 
   const mergedColumns = columns.map(col => {
-    if (!col.editable) return col;
+    if (!col.editable || col.key === 'detail' || col.key === 'actions') return col;
     return {
       ...col,
       onCell: (record) => ({
@@ -348,8 +360,22 @@ export default function Commesse() {
 
       {/* Main Table */}
       <Card>
+        <style>
+          {`
+            .commesse-table .ant-table-tbody > tr:not(.editing-row):hover {
+              background-color: #f5f5f5;
+            }
+            .commesse-table .ant-table-tbody > tr:not(.editing-row) td:last-child {
+              cursor: default !important;
+            }
+            .commesse-table .ant-table-tbody > tr:not(.editing-row) td:not(:last-child) {
+              cursor: pointer;
+            }
+          `}
+        </style>
         <Form form={form} component={false}>
           <Table
+            className="commesse-table"
             components={{ body: { cell: EditableCell } }}
             bordered
             dataSource={dataSourceForTable}
@@ -364,9 +390,20 @@ export default function Commesse() {
             loading={loading}
             rowClassName={record => isEditing(record) ? 'editing-row' : 'editable-row'}
             onRow={record => ({
-              onClick: () => {
-                if (record._id && !isEditing(record)) {
-                  // Optional: navigate to detail view on row click
+              onClick: (event) => {
+                // Non navigare se si sta cliccando sulla colonna Actions o se si è in editing
+                if (isEditing(record)) return;
+                
+                // Controlla se il click è avvenuto nella colonna Actions
+                const target = event.target.closest('td');
+                const actionCell = target?.querySelector('.ant-btn, .ant-popover');
+                if (actionCell || target?.classList.contains('ant-table-cell') && target.cellIndex === columns.length - 1) {
+                  return; // Non navigare se click su Actions
+                }
+                
+                // Naviga al dettaglio se c'è un ID valido
+                if (record._id) {
+                  navigate(`/commesse/${record._id}`);
                 }
               },
               style: isEditing(record) ? { cursor: 'default', background: '#f6f6f6' } : { cursor: 'pointer' },
