@@ -15,6 +15,8 @@ const {
   createTreatmentStatus
 } = require('../../shared/statusConfig.js');
 
+const { createStatusChangeNotification } = require('./notificationUtils');
+
 /**
  * Middleware per applicare automaticamente la transizione a "Pronto per consegna"
  * Deve essere chiamato dopo ogni aggiornamento di stato
@@ -142,6 +144,14 @@ async function processStatusChange(component, newStatus, user = '', note = '', d
       component.history.push(transition.historyEntry);
       populateAllowedStatuses(component);
     }
+  }
+
+  // Create notifications for specific status changes
+  try {
+    await createStatusChangeNotification(component, oldStatus, component.status, user);
+  } catch (notificationError) {
+    // Log the error but don't fail the status change
+    console.error('Failed to create status change notification:', notificationError);
   }
   
   return {
