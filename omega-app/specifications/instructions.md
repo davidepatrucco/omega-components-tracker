@@ -65,14 +65,15 @@ Questa sezione descrive il concetto di "stato di lavoro" usato per tracciare il 
 
 gli stati sono
 1 - Nuovo
-2 - Produzione Interna oppure 3 - Produzione Esterna
+2 - Produzione Interna oppure 2 - Produzione Esterna
 3 - Costruito
+4 - In trattamento   
     per ogni trattamento previsto (nel data model, il field trattamenti è una array di più trattamenti)
     4a - in preparazione <nome trattamento>) 4b - in trattamento <nome trattamento> 4c - arrivato da <nome trattamento>
 5 - Pronto per consegna
 6 - Spedito
 
-Nota: nel caso di siano tre trattamenti (possono essercene N) TRATT1 TRATT2 E TRATT3, la sequenza di stati possibili (allowedStatuses) sarà
+Nota: nel caso di siano più trattamenti (possono essercene N) TRATT1 TRATT2 E TRATT3, la sequenza di stati possibili (allowedStatuses) sarà
 1,
 2 oppure 3,
 4a, 4b, 4c per ciascun trattamento (TRATT2 può avvenire prima di TRATT1 o comunque in qualunque ordine
