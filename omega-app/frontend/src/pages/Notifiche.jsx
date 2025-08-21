@@ -274,100 +274,109 @@ const Notifiche = () => {
                   key={notification._id}
                   style={{ 
                     backgroundColor: notification.isRead ? '#fff' : getNotificationColor(notification.type),
-                    padding: '12px 16px',
-                    marginBottom: 8,
-                    borderRadius: 8,
+                    padding: '8px 12px',
+                    marginBottom: 6,
+                    borderRadius: 6,
                     border: notification.isRead ? '1px solid #f0f0f0' : '1px solid #d9d9d9',
                     cursor: notification.actionUrl ? 'pointer' : 'default'
                   }}
                   onClick={() => handleNotificationClick(notification)}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, width: '100%' }}>
-                    <div style={{ fontSize: 18, marginTop: 2 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%' }}>
+                    <div style={{ fontSize: 16, marginTop: 1 }}>
                       {getNotificationIcon(notification.type)}
                     </div>
                     
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                        <Title level={5} style={{ margin: 0, fontWeight: notification.isRead ? 'normal' : 'bold', lineHeight: 1.3 }}>
+                      {/* Header con titolo, priorità e data */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                        <Title level={5} style={{ 
+                          margin: 0, 
+                          fontWeight: notification.isRead ? 'normal' : 'bold', 
+                          lineHeight: 1.2,
+                          fontSize: 14
+                        }}>
                           {notification.title}
                         </Title>
                         
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {getPriorityTag(notification.priority)}
-                            <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
-                              {formatDate(notification.createdAt)}
-                            </Text>
-                          </div>
-                          
-                          <Space size="small">
-                            {!notification.isRead && (
-                              <Tooltip title="Marca come letta">
-                                <Button 
-                                  size="small" 
-                                  type="text"
-                                  icon={<EyeOutlined />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    markAsRead(notification._id);
-                                  }}
-                                  style={{ padding: '2px 4px', height: 'auto' }}
-                                />
-                              </Tooltip>
-                            )}
-                            <Popconfirm
-                              title="Eliminare questa notifica?"
-                              onConfirm={(e) => {
-                                e?.stopPropagation();
-                                deleteNotification(notification._id);
-                              }}
-                              okText="Sì"
-                              cancelText="No"
-                            >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          {getPriorityTag(notification.priority)}
+                          <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
+                            {formatDate(notification.createdAt)}
+                          </Text>
+                        </div>
+                      </div>
+                      
+                      {/* Messaggio e azioni in linea */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                        <Text style={{ 
+                          color: notification.isRead ? '#999' : '#000', 
+                          fontSize: 13,
+                          lineHeight: 1.3,
+                          flex: 1
+                        }}>
+                          {notification.message}
+                        </Text>
+                        
+                        <Space size="small" style={{ flexShrink: 0 }}>
+                          {!notification.isRead && (
+                            <Tooltip title="Marca come letta">
                               <Button 
                                 size="small" 
                                 type="text"
-                                danger 
-                                icon={<DeleteOutlined />}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ padding: '2px 4px', height: 'auto' }}
+                                icon={<EyeOutlined />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  markAsRead(notification._id);
+                                }}
+                                style={{ padding: '2px 4px', height: 'auto', minWidth: 'auto' }}
                               />
-                            </Popconfirm>
-                            {notification.actionUrl && (
-                              <Tooltip title="Vai alla risorsa">
-                                <LinkOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                              </Tooltip>
-                            )}
-                          </Space>
-                        </div>
+                            </Tooltip>
+                          )}
+                          <Popconfirm
+                            title="Eliminare questa notifica?"
+                            onConfirm={(e) => {
+                              e?.stopPropagation();
+                              deleteNotification(notification._id);
+                            }}
+                            okText="Sì"
+                            cancelText="No"
+                          >
+                            <Button 
+                              size="small" 
+                              type="text"
+                              danger 
+                              icon={<DeleteOutlined />}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ padding: '2px 4px', height: 'auto', minWidth: 'auto' }}
+                            />
+                          </Popconfirm>
+                          {notification.actionUrl && (
+                            <Tooltip title="Vai alla risorsa">
+                              <LinkOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                            </Tooltip>
+                          )}
+                        </Space>
                       </div>
                       
-                      <Text style={{ 
-                        color: notification.isRead ? '#999' : '#000', 
-                        fontSize: 13,
-                        lineHeight: 1.4,
-                        display: 'block',
-                        marginBottom: 4
-                      }}>
-                        {notification.message}
-                      </Text>
-                      
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          {notification.relatedEntity && (
-                            <Tag color="geekblue" size="small" style={{ margin: 0 }}>
-                              {notification.relatedEntity.type}: {notification.relatedEntity.name}
-                            </Tag>
+                      {/* Footer con tag e info lettura - solo se necessario */}
+                      {(notification.relatedEntity || (notification.isRead && notification.readAt)) && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                          <div>
+                            {notification.relatedEntity && (
+                              <Tag color="geekblue" size="small" style={{ margin: 0, fontSize: 10 }}>
+                                {notification.relatedEntity.type}: {notification.relatedEntity.name}
+                              </Tag>
+                            )}
+                          </div>
+                          
+                          {notification.isRead && notification.readAt && (
+                            <Text type="secondary" style={{ fontSize: 9 }}>
+                              Letta il {new Date(notification.readAt).toLocaleString()}
+                            </Text>
                           )}
                         </div>
-                        
-                        {notification.isRead && notification.readAt && (
-                          <Text type="secondary" style={{ fontSize: 10 }}>
-                            Letta il {new Date(notification.readAt).toLocaleString()}
-                          </Text>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 </List.Item>
