@@ -3,6 +3,7 @@ const router = express.Router();
 const Component = require('../models/Component');
 const Commessa = require('../models/Commessa');
 const { requireAuth } = require('../middleware/auth');
+const { buildAllowedStatuses, populateAllowedStatuses, processStatusChange } = require('../utils/statusUtils');
 
 // GET /components - list with pagination and optional q, commessaId
 router.get('/', requireAuth, async (req, res) => {
@@ -59,18 +60,11 @@ router.post('/', requireAuth, async (req, res) => {
       commessaName: comm.name
     };
     
-    // Calcola gli stati consentiti se trattamenti sono presenti
-    if (componentData.trattamenti && Array.isArray(componentData.trattamenti)) {
-      const globals = ['1','2','3','5','6'];
-      const treatmentStates = componentData.trattamenti.flatMap(t =>
-        [`4:${t}:PREP`, `4:${t}:IN`, `4:${t}:ARR`]
-      );
-      componentData.allowedStatuses = Array.from(new Set([...globals, ...treatmentStates]));
-    } else {
-      componentData.allowedStatuses = ['1','2','3','5','6'];
-    }
+    // Usa la configurazione centralizzata per calcolare allowedStatuses
+    const component = new Component(componentData);
+    populateAllowedStatuses(component);
     
-    const component = await Component.create(componentData);
+    await component.save();
     res.status(201).json(component);
   } catch (err) {
     res.status(500).json({ error: 'Error creating component', details: err.message });
@@ -85,33 +79,40 @@ router.put('/:id', requireAuth, async (req, res) => {
     
     const updateData = { ...req.body };
     
-    // Se viene cambiato lo stato, aggiungi alla history
+    // Se viene cambiato lo stato, usa la logica centralizzata
     if (updateData.status && updateData.status !== component.status) {
-      component.history = component.history || [];
-      component.history.push({
-        from: component.status,
-        to: updateData.status,
-        date: new Date(),
-        note: updateData.statusChangeNote || '',
-        user: req.user?.username || ''
-      });
+      const ddtInfo = (updateData.ddtNumber || updateData.ddtDate) ? 
+        { number: updateData.ddtNumber, date: updateData.ddtDate } : null;
+      
+      await processStatusChange(
+        component,
+        updateData.status,
+        req.user?.username || '',
+        updateData.statusChangeNote || '',
+        ddtInfo,
+        async (comp) => await comp.save()
+      );
+      
+      // Rimuovi i campi di stato dall'updateData per evitare doppie modifiche
+      delete updateData.status;
+      delete updateData.statusChangeNote;
+      delete updateData.ddtNumber;
+      delete updateData.ddtDate;
     }
     
-    // Aggiorna i campi
+    // Aggiorna altri campi
     Object.assign(component, updateData);
     
-    // Ricalcola gli stati consentiti se i trattamenti sono cambiati
+    // Ricalcola allowedStatuses se trattamenti sono cambiati
     if (updateData.trattamenti) {
-      component.allowedStatuses = component.buildAllowedStatuses();
+      populateAllowedStatuses(component);
     }
-    
-    // Controlla auto-transizione a "Pronto"
-    component.maybeAutoTransitionToReady();
     
     await component.save();
     res.json(component);
   } catch (err) {
-    res.status(500).json({ error: 'Error updating component', details: err.message });
+    console.error('Error updating component:', err);
+    res.status(500).json({ error: err.message || 'Error updating component' });
   }
 });
 
