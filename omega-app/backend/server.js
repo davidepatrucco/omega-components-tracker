@@ -60,7 +60,7 @@ const statsRouter = require('./routes/stats');
 app.use('/components', componentsRouter);
 app.use('/commesse', commesseRouter);
 app.use('/changestatus', changeStatusRouter);
-app.use('/stats', statsRouter);
+app.use('/api/stats', statsRouter);
 
 // Health endpoint (reports basic health)
 app.get('/health', (req, res) => {
