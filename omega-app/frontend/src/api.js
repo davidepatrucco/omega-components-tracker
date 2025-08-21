@@ -30,7 +30,9 @@ api.interceptors.response.use(
     }
     
     // Add userMessage to error for consistent error handling
-    if (error.response?.data?.error) {
+    if (error.response?.data?.userMessage) {
+      error.userMessage = error.response.data.userMessage;
+    } else if (error.response?.data?.error) {
       error.userMessage = error.response.data.error;
     } else {
       error.userMessage = error.message || 'Errore di rete';
