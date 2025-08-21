@@ -44,6 +44,14 @@ const DettaglioCommessa = () => {
   const [adding, setAdding] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [barcodeModal, setBarcodeModal] = useState({ open: false, value: '' });
+  const [statusChangeModal, setStatusChangeModal] = useState({ 
+    open: false, 
+    componentId: null, 
+    currentStatus: '', 
+    newStatus: '', 
+    component: null 
+  });
+  const [statusChangeForm] = Form.useForm();
 
   // Genera statusOptions dinamicamente usando la configurazione centralizzata  
   const generateStatusOptions = (component = null) => {
@@ -170,12 +178,35 @@ const DettaglioCommessa = () => {
       } else {
         // Aggiornamento componente esistente
         const componentToUpdate = components.find(c => c._id === key);
+        
+        // Controlla se è cambiato lo stato
+        if (row.status && row.status !== componentToUpdate.status) {
+          // Apri modale per cambio stato
+          setStatusChangeModal({
+            open: true,
+            componentId: key,
+            currentStatus: componentToUpdate.status,
+            newStatus: row.status,
+            component: componentToUpdate,
+            otherChanges: { ...row, status: undefined } // Altri campi modificati
+          });
+          return; // Esce dalla funzione save, la modale gestirà il salvataggio
+        }
+        
         const updatedData = {
           ...componentToUpdate,
           ...row
         };
         
+        console.log('[Frontend] Updating component:', key);
+        console.log('[Frontend] Component to update:', componentToUpdate);
+        console.log('[Frontend] Row data:', row);
+        console.log('[Frontend] Final updated data:', updatedData);
+        
         const response = await api.put(`/api/components/${key}`, updatedData);
+        
+        console.log('[Frontend] Update response status:', response.status);
+        console.log('[Frontend] Update response data:', response.data);
         
         if (response.status === 200) {
           antdMessage.success('Componente aggiornato');
@@ -185,9 +216,52 @@ const DettaglioCommessa = () => {
       
       setEditingKey('');
     } catch (errInfo) {
-      console.log('Validate Failed:', errInfo);
+      console.error('[Frontend] Error in save operation:', errInfo);
+      console.log('[Frontend] Validate Failed:', errInfo);
       antdMessage.error('Errore nella validazione dei dati');
     }
+  };
+
+  const handleStatusChange = async (values) => {
+    try {
+      const { componentId, currentStatus, newStatus, component, otherChanges } = statusChangeModal;
+      
+      // Prepara i dati per l'aggiornamento
+      const updatedData = {
+        ...component,
+        ...otherChanges, // Altri campi modificati nella tabella
+        status: newStatus,
+        statusChangeNote: values.note || '',
+        ddtNumber: values.ddtNumber || '',
+        ddtDate: values.ddtDate || ''
+      };
+      
+      console.log('[Frontend] Status change - updating component:', componentId);
+      console.log('[Frontend] Status change data:', updatedData);
+      
+      const response = await api.put(`/api/components/${componentId}`, updatedData);
+      
+      if (response.status === 200) {
+        antdMessage.success(`Stato cambiato da "${getStatusLabel(currentStatus)}" a "${getStatusLabel(newStatus)}"`);
+        fetchData();
+        setStatusChangeModal({ open: false, componentId: null, currentStatus: '', newStatus: '', component: null });
+        statusChangeForm.resetFields();
+        setEditingKey('');
+      }
+    } catch (error) {
+      console.error('[Frontend] Error in status change:', error);
+      antdMessage.error('Errore durante il cambio di stato');
+    }
+  };
+
+  const handleCancelStatusChange = () => {
+    setStatusChangeModal({ open: false, componentId: null, currentStatus: '', newStatus: '', component: null });
+    statusChangeForm.resetFields();
+    setEditingKey(''); // Esce dalla modalità editing
+  };
+
+  const requiresDDT = (status) => {
+    return status === '6' || status.includes(':ARR');
   };
 
   const handleDelete = async (key) => {
@@ -553,6 +627,68 @@ const DettaglioCommessa = () => {
       </Spin>
 
       {/* Modal Barcode */}
+      
+      {/* Modale cambio stato */}
+      <Modal
+        title="Cambio Stato"
+        open={statusChangeModal.open}
+        onOk={() => statusChangeForm.submit()}
+        onCancel={handleCancelStatusChange}
+        okText="Conferma"
+        cancelText="Annulla"
+        destroyOnClose
+      >
+        <Form
+          form={statusChangeForm}
+          layout="vertical"
+          onFinish={handleStatusChange}
+        >
+          <div style={{ marginBottom: 16 }}>
+            <Text strong>Componente: </Text>
+            <Text>{statusChangeModal.component?.descrizioneComponente}</Text>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <Text strong>Cambio stato: </Text>
+            <Tag color={getStatusColor(statusChangeModal.currentStatus)}>
+              {getStatusLabel(statusChangeModal.currentStatus)}
+            </Tag>
+            <Text> → </Text>
+            <Tag color={getStatusColor(statusChangeModal.newStatus)}>
+              {getStatusLabel(statusChangeModal.newStatus)}
+            </Tag>
+          </div>
+          
+          <Form.Item
+            label="Nota (opzionale)"
+            name="note"
+          >
+            <Input.TextArea 
+              rows={3} 
+              placeholder="Inserisci una nota per questo cambio di stato..."
+            />
+          </Form.Item>
+          
+          {requiresDDT(statusChangeModal.newStatus) && (
+            <>
+              <Divider orientation="left">Dati DDT</Divider>
+              <Form.Item
+                label="Numero DDT"
+                name="ddtNumber"
+              >
+                <Input placeholder="Inserisci numero DDT..." />
+              </Form.Item>
+              
+              <Form.Item
+                label="Data DDT"
+                name="ddtDate"
+              >
+                <Input type="date" />
+              </Form.Item>
+            </>
+          )}
+        </Form>
+      </Modal>
+
       <Modal
         open={barcodeModal.open}
         onCancel={() => setBarcodeModal({ open: false, value: '' })}

@@ -74,23 +74,37 @@ router.post('/', requireAuth, async (req, res) => {
 // PUT /components/:id - update component
 router.put('/:id', requireAuth, async (req, res) => {
   try {
+    console.log(`[PUT /components/${req.params.id}] Request body:`, JSON.stringify(req.body, null, 2));
+    console.log(`[PUT /components/${req.params.id}] User:`, req.user?.username);
+    
     const component = await Component.findById(req.params.id);
-    if (!component) return res.status(404).json({ error: 'Component not found' });
+    if (!component) {
+      console.log(`[PUT /components/${req.params.id}] Component not found`);
+      return res.status(404).json({ error: 'Component not found' });
+    }
+    
+    console.log(`[PUT /components/${req.params.id}] Current component version:`, component.__v);
+    console.log(`[PUT /components/${req.params.id}] Current status:`, component.status);
     
     const updateData = { ...req.body };
     
     // Se viene cambiato lo stato, usa la logica centralizzata
     if (updateData.status && updateData.status !== component.status) {
+      console.log(`[PUT /components/${req.params.id}] Status change: ${component.status} -> ${updateData.status}`);
+      
       const ddtInfo = (updateData.ddtNumber || updateData.ddtDate) ? 
         { number: updateData.ddtNumber, date: updateData.ddtDate } : null;
       
+      console.log(`[PUT /components/${req.params.id}] DDT info:`, ddtInfo);
+      
+      // Non salviamo qui, solo processiamo il cambio di stato
       await processStatusChange(
         component,
         updateData.status,
         req.user?.username || '',
         updateData.statusChangeNote || '',
         ddtInfo,
-        async (comp) => await comp.save()
+        null // Non passare saveCallback, gestiamo il save dopo
       );
       
       // Rimuovi i campi di stato dall'updateData per evitare doppie modifiche
@@ -100,18 +114,55 @@ router.put('/:id', requireAuth, async (req, res) => {
       delete updateData.ddtDate;
     }
     
+    console.log(`[PUT /components/${req.params.id}] Update data after status change:`, updateData);
+    
     // Aggiorna altri campi
     Object.assign(component, updateData);
     
     // Ricalcola allowedStatuses se trattamenti sono cambiati
     if (updateData.trattamenti) {
+      console.log(`[PUT /components/${req.params.id}] Recalculating allowed statuses for treatments:`, updateData.trattamenti);
       populateAllowedStatuses(component);
     }
     
-    await component.save();
+    // Gestione versioning ottimistico con retry
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        console.log(`[PUT /components/${req.params.id}] Saving attempt ${retryCount + 1}, version:`, component.__v);
+        await component.save();
+        console.log(`[PUT /components/${req.params.id}] Save successful, new version:`, component.__v);
+        break;
+      } catch (err) {
+        console.log(`[PUT /components/${req.params.id}] Save error:`, err.name, err.message);
+        if (err.name === 'VersionError' && retryCount < maxRetries - 1) {
+          retryCount++;
+          console.log(`[PUT /components/${req.params.id}] Retrying save attempt ${retryCount}...`);
+          // Ricarica il documento con la versione aggiornata
+          const freshComponent = await Component.findById(component._id);
+          if (!freshComponent) {
+            console.log(`[PUT /components/${req.params.id}] Component not found on retry`);
+            return res.status(404).json({ error: 'Component not found' });
+          }
+          console.log(`[PUT /components/${req.params.id}] Reloaded component version:`, freshComponent.__v);
+          // Riapplica le modifiche al documento fresco
+          Object.assign(freshComponent, updateData);
+          if (updateData.trattamenti) {
+            populateAllowedStatuses(freshComponent);
+          }
+          component = freshComponent;
+        } else {
+          throw err;
+        }
+      }
+    }
+    
+    console.log(`[PUT /components/${req.params.id}] Sending response`);
     res.json(component);
   } catch (err) {
-    console.error('Error updating component:', err);
+    console.error(`[PUT /components/${req.params.id}] Error updating component:`, err);
     res.status(500).json({ error: err.message || 'Error updating component' });
   }
 });
