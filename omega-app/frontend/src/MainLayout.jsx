@@ -3,12 +3,12 @@ import { Layout, Menu } from 'antd';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import HeaderBar from './components/HeaderBar';
 import { useAuth } from './AuthContext';
-import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined, UserOutlined } from '@ant-design/icons';
 const { Header, Sider, Content } = Layout;
 
 export default function MainLayout(){
   const [collapsed, setCollapsed] = useState(false);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,6 +27,15 @@ export default function MainLayout(){
     { key: 'notifiche', icon: <CarryOutOutlined />, label: <Link to="/notifiche">Notifiche</Link> },
     { key: 'report', icon: <PieChartOutlined />, label: <Link to="/report">Reporting</Link> }
   ];
+
+  // Add user management menu item only for admin users
+  if (user && user.profilo === 'ADMIN') {
+    menuItems.push({
+      key: 'utenti',
+      icon: <UserOutlined />,
+      label: <Link to="/utenti">Gestione Utenze</Link>
+    });
+  }
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
