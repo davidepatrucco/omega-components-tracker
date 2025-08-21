@@ -1,24 +1,40 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Layout, Menu } from 'antd';
 import { Outlet, Link } from 'react-router-dom';
+import HeaderBar from './components/HeaderBar';
+import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined } from '@ant-design/icons';
 const { Header, Sider, Content } = Layout;
 
 export default function MainLayout(){
+  const [collapsed, setCollapsed] = useState(false);
+
+  const menuItems = [
+    { key: 'lavorazioni', icon: <AppstoreOutlined />, label: <Link to="/">Lavorazioni</Link> },
+    { key: 'commesse', icon: <FileOutlined />, label: <Link to="/commesse">Commesse</Link> },
+    { key: 'report', icon: <CarryOutOutlined />, label: <Link to="/report">Notifiche</Link> },
+    { key: 'report', icon: <PieChartOutlined />, label: <Link to="/report">Reporting</Link> }
+  ];
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={220} style={{ background: '#fff' }}>
-        <div style={{padding:16, fontWeight:700}}>Omega</div>
-        <Menu mode="inline" defaultSelectedKeys={["lavorazioni"]}>
-          <Menu.Item key="lavorazioni"><Link to="/">Lavorazioni</Link></Menu.Item>
-          <Menu.Item key="commesse"><Link to="/commesse">Commesse</Link></Menu.Item>
-          <Menu.Item key="report"><Link to="/report">Reporting</Link></Menu.Item>
-        </Menu>
-      </Sider>
+      <Header style={{ padding: 0, background: '#fff' }}>
+        <HeaderBar collapsed={collapsed} onToggle={() => setCollapsed(s => !s)} />
+      </Header>
+
       <Layout>
-        <Header style={{ background: '#fff', paddingLeft: 16 }}>Omega - header</Header>
-        <Content style={{ margin: 16 }}>
-          <Outlet />
-        </Content>
+        <Sider collapsible collapsed={collapsed} trigger={null} width={220} style={{ background: '#fff', borderRight: '1px solid rgba(15,23,42,0.04)' }}>
+          <div style={{ height: 64, display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px' }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#4f46e5,#06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, boxShadow: '0 6px 18px rgba(79,70,229,0.12)' }}>Ω</div>
+            {!collapsed && <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a', letterSpacing: 0.2 }}>Omega</div>}
+          </div>
+          <Menu mode="inline" defaultSelectedKeys={["lavorazioni"]} items={menuItems} style={{ border: 'none' }} />
+        </Sider>
+
+        <Layout>
+          <Content style={{ margin: 16 }}>
+            <Outlet />
+          </Content>
+        </Layout>
       </Layout>
     </Layout>
   );

@@ -4,6 +4,8 @@ import { AuthProvider } from './AuthContext';
 import LoginPage from './pages/LoginPage';
 import MainLayout from './MainLayout';
 import Lavorazioni from './pages/Lavorazioni';
+import Commesse from './pages/Commesse';
+import DettaglioCommessa from './pages/DettaglioCommessa';
 
 export default function App(){
   return (
@@ -13,7 +15,8 @@ export default function App(){
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Lavorazioni />} />
-            <Route path="commesse" element={<div>Commesse (placeholder)</div>} />
+            <Route path="commesse" element={<Commesse />} />
+            <Route path="commesse/:id" element={<DettaglioCommessa />} />
             <Route path="report" element={<div>Reporting (placeholder)</div>} />
           </Route>
         </Routes>
