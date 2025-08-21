@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Card, Button, message, Typography, Space, Spin } from 'antd';
 import { DownloadOutlined, ReloadOutlined, FileOutlined } from '@ant-design/icons';
-import api from '../api';
+import { api } from '../api';
 
 const { Title } = Typography;
 
