@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal } from 'antd';
 import BarcodeWithText from '../BarcodeWithText';
 import { api } from '../api';
+import { getStatusLabel, getStatusColor, formatStatusDisplay } from '../utils/statusUtils';
 
 const { Title, Text } = Typography;
 
@@ -39,37 +40,21 @@ export default function Lavorazioni(){
     comp.status !== '5' && comp.status !== '6' && !comp.cancellato
   );
 
-  const getStatusLabel = (status) => {
-    const statusLabels = {
-      '1': '1 - Nuovo',
-      '2': '2 - In lavorazione', 
-      '3': '3 - Controllo qualità',
-      '4': '4 - In trattamento',
-      '5': '5 - Pronto per consegna',
-      '6': '6 - Spedito'
+  const handleStatusColor = (status) => {
+    // Usa la configurazione centralizzata per i colori di Ant Design
+    const statusDisplay = formatStatusDisplay(status);
+    
+    // Mappa i colori hex ai nomi di colori Ant Design
+    const colorMap = {
+      '#d9d9d9': 'default',
+      '#1890ff': 'blue', 
+      '#722ed1': 'purple',
+      '#52c41a': 'green',
+      '#faad14': 'gold',
+      '#ff4d4f': 'red'
     };
     
-    // Handle treatment-specific statuses
-    if (status && status.startsWith('4:')) {
-      return status.replace('4:', '4 - ').replace(':PREP', ' - Preparazione')
-                  .replace(':IN', ' - In corso').replace(':ARR', ' - Arrivato');
-    }
-    
-    return statusLabels[status] || status;
-  };
-
-  const getStatusColor = (status) => {
-    const statusColors = {
-      '1': 'blue',
-      '2': 'orange', 
-      '3': 'purple',
-      '4': 'gold',
-      '5': 'green',
-      '6': 'default'
-    };
-    
-    if (status && status.startsWith('4:')) return 'gold';
-    return statusColors[status] || 'default';
+    return colorMap[statusDisplay.color] || 'default';
   };
 
   const parseTreatments = (treatmentsString) => {
@@ -202,7 +187,7 @@ export default function Lavorazioni(){
 
                   {/* Status */}
                   <div>
-                    <Tag color={getStatusColor(comp.status)} style={{ fontSize: 11, fontWeight: 'bold' }}>
+                    <Tag color={handleStatusColor(comp.status)} style={{ fontSize: 11, fontWeight: 'bold' }}>
                       {getStatusLabel(comp.status)}
                     </Tag>
                   </div>
