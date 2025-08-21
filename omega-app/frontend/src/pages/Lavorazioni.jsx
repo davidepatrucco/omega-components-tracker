@@ -42,6 +42,8 @@ export default function Lavorazioni(){
     component: null 
   });
   const [statusChangeForm] = Form.useForm();
+  const [editingStatus, setEditingStatus] = useState(null); // Per editing inline
+  const [form] = Form.useForm(); // Form per editing inline
   
   // Filtri e ordinamento
   const [filters, setFilters] = useState({
@@ -56,6 +58,27 @@ export default function Lavorazioni(){
   // Paginazione lazy
   const [visibleCount, setVisibleCount] = useState(8);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Genera statusOptions dinamicamente usando la configurazione centralizzata  
+  const generateStatusOptions = (component = null) => {
+    if (!component) {
+      // Stati base per la creazione di nuovi componenti
+      return [
+        { value: '1', label: getStatusLabel('1'), color: getStatusColor('1') },
+        { value: '2', label: getStatusLabel('2'), color: getStatusColor('2') },
+        { value: '2-ext', label: getStatusLabel('2-ext'), color: getStatusColor('2-ext') },
+        { value: '3', label: getStatusLabel('3'), color: getStatusColor('3') }
+      ];
+    }
+    
+    // Stati consentiti per il componente specifico
+    const allowedStatuses = buildAllowedStatuses(component);
+    return allowedStatuses.map(status => ({
+      value: status,
+      label: getStatusLabel(status),
+      color: getStatusColor(status)
+    }));
+  };
 
   useEffect(() => {
     fetchData();
@@ -124,32 +147,31 @@ export default function Lavorazioni(){
 
   const handleStatusChange = async (values) => {
     try {
-      const { component } = statusChangeModal;
-      const newStatus = values.newStatus;
+      const { componentId, newStatus, component } = statusChangeModal;
       
       const updateData = { 
         status: newStatus,
         note: values.note || undefined
       };
 
-      // Se lo stato è "Spedito" (6), aggiungi i dati DDT
+      // Se lo stato è "Spedito" (6), aggiungi i dati DDT (come DettaglioCommessa)
       if (requiresDDT(newStatus)) {
-        if (!values.numeroDDT || !values.dataDDT) {
+        if (!values.ddtNumber || !values.ddtDate) {
           message.error('Numero DDT e Data DDT sono obbligatori per la spedizione');
           return;
         }
         
         updateData.ddt = {
-          numero: values.numeroDDT,
-          date: values.dataDDT.toISOString(),
+          numero: values.ddtNumber,
+          date: values.ddtDate,
           corriere: values.corriere || '',
           tracking: values.tracking || ''
         };
       }
 
-      await api.put(`/api/components/${component._id}`, updateData);
+      await api.put(`/api/components/${componentId}`, updateData);
       message.success('Stato aggiornato con successo');
-      setStatusChangeModal({ open: false, component: null, currentStatus: '', newStatus: '' });
+      setStatusChangeModal({ open: false, componentId: null, currentStatus: '', newStatus: '', component: null });
       statusChangeForm.resetFields();
       fetchData(); // Refresh data
     } catch (err) {
@@ -168,6 +190,40 @@ export default function Lavorazioni(){
     }
   };
 
+  // Funzioni per editing inline del status (come DettaglioCommessa)
+  const editStatus = (componentId) => {
+    setEditingStatus(componentId);
+    const component = components.find(c => c._id === componentId);
+    form.setFieldsValue({ status: component.status });
+  };
+
+  const cancelStatusEdit = () => {
+    setEditingStatus(null);
+    form.resetFields();
+  };
+
+  const saveStatusChange = async (componentId) => {
+    try {
+      const values = await form.validateFields(['status']);
+      const component = components.find(c => c._id === componentId);
+      
+      // Se lo stato è cambiato, apri il modal ESATTAMENTE come DettaglioCommessa
+      if (values.status !== component.status) {
+        setStatusChangeModal({
+          open: true,
+          componentId: componentId,
+          currentStatus: component.status,
+          newStatus: values.status,
+          component: component
+        });
+      }
+      
+      setEditingStatus(null);
+    } catch (err) {
+      console.error('Validation failed:', err);
+    }
+  };
+
   // Funzione per aprire la modal di cambio stato con select libero
   const openStatusChangeModal = (component) => {
     setStatusChangeModal({
@@ -183,7 +239,7 @@ export default function Lavorazioni(){
   };
 
   const handleCancelStatusChange = () => {
-    setStatusChangeModal({ open: false, component: null, currentStatus: '', newStatus: '' });
+    setStatusChangeModal({ open: false, componentId: null, currentStatus: '', newStatus: '', component: null });
     statusChangeForm.resetFields();
   };
 
@@ -399,11 +455,13 @@ export default function Lavorazioni(){
                   style={{ width: '100%' }}
                   options={[
                     { label: 'Tutti gli stati', value: 'all' },
-                    { label: '1 - Creato', value: '1' },
-                    { label: '2 - Produzione Interna', value: '2' },
-                    { label: '3 - Costruito', value: '3' },
-                    { label: '4 - In preparazione nichelatura', value: '4' },
-                    { label: '6 - Spedito', value: '6' }
+                    { label: getStatusLabel('1'), value: '1' },
+                    { label: getStatusLabel('2'), value: '2' },
+                    { label: getStatusLabel('2-ext'), value: '2-ext' },
+                    { label: getStatusLabel('3'), value: '3' },
+                    { label: getStatusLabel('4'), value: '4' },
+                    { label: getStatusLabel('5'), value: '5' },
+                    { label: getStatusLabel('6'), value: '6' }
                   ]}
                 />
               </Space>
@@ -462,16 +520,9 @@ export default function Lavorazioni(){
                     height: '100%',
                     borderRadius: 8,
                     border: '1px solid #f0f0f0',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    cursor: 'pointer'
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                   }}
                   bodyStyle={{ padding: 16 }}
-                  onClick={() => navigate('/dettaglio-commessa', { 
-                    state: { 
-                      commessaId: comp.commessaId, 
-                      highlightComponentId: comp._id 
-                    } 
-                  })}
                   extra={
                     <Space>
                       {/* Icona info completa */}
@@ -480,7 +531,10 @@ export default function Lavorazioni(){
                           type="text"
                           size="small"
                           icon={<PlusOutlined />}
-                          onClick={() => setComponentInfoModal({ open: true, component: comp })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setComponentInfoModal({ open: true, component: comp });
+                          }}
                         />
                       </Tooltip>
                       
@@ -491,7 +545,10 @@ export default function Lavorazioni(){
                             type="text"
                             size="small"
                             icon={<InfoCircleOutlined />}
-                            onClick={() => setShippingInfoModal({ open: true, component: comp })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShippingInfoModal({ open: true, component: comp });
+                            }}
                           />
                         </Tooltip>
                       )}
@@ -570,18 +627,40 @@ export default function Lavorazioni(){
 
                   {/* Status - Clickable for quick change */}
                   <div>
-                    <Tooltip title="Clicca qui per cambiare stato">
-                      <Tag 
-                        color={handleStatusColor(comp.status)} 
-                        style={{ fontSize: 11, fontWeight: 'bold', cursor: 'pointer' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openStatusChangeModal(comp);
-                        }}
-                      >
-                        {getStatusLabel(comp.status)}
-                      </Tag>
-                    </Tooltip>
+                    {editingStatus === comp._id ? (
+                      <Form form={form} component={false}>
+                        <Form.Item name="status" style={{ margin: 0 }}>
+                          <Select 
+                            style={{ minWidth: 120 }}
+                            onBlur={() => saveStatusChange(comp._id)}
+                            onSelect={(value) => {
+                              form.setFieldsValue({ status: value });
+                              saveStatusChange(comp._id);
+                            }}
+                            autoFocus
+                          >
+                            {generateStatusOptions(comp).map(option => (
+                              <Select.Option key={option.value} value={option.value}>
+                                {option.label}
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Form>
+                    ) : (
+                      <Tooltip title="Clicca qui per cambiare stato">
+                        <Tag 
+                          color={handleStatusColor(comp.status)} 
+                          style={{ fontSize: 11, fontWeight: 'bold', cursor: 'pointer' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editStatus(comp._id);
+                          }}
+                        >
+                          {getStatusLabel(comp.status)}
+                        </Tag>
+                      </Tooltip>
+                    )}
                   </div>
                 </Card>
               </Col>
@@ -631,7 +710,7 @@ export default function Lavorazioni(){
         </div>
       </Modal>
 
-      {/* Status Change Modal */}
+      {/* Status Change Modal - IDENTICO a DettaglioCommessa */}
       <Modal
         title="Cambio Stato"
         open={statusChangeModal.open}
@@ -650,76 +729,45 @@ export default function Lavorazioni(){
             <Text strong>Componente: </Text>
             <Text>{statusChangeModal.component?.descrizioneComponente}</Text>
           </div>
-          
           <div style={{ marginBottom: 16 }}>
-            <Text strong>Stato attuale: </Text>
+            <Text strong>Cambio stato: </Text>
             <Tag color={getStatusColor(statusChangeModal.currentStatus)}>
               {getStatusLabel(statusChangeModal.currentStatus)}
             </Tag>
+            <Text> → </Text>
+            <Tag color={getStatusColor(statusChangeModal.newStatus)}>
+              {getStatusLabel(statusChangeModal.newStatus)}
+            </Tag>
           </div>
-
-          <Form.Item
-            label="Nuovo stato"
-            name="newStatus"
-            rules={[{ required: true, message: 'Seleziona il nuovo stato' }]}
-          >
-            <Select
-              placeholder="Seleziona stato"
-              onChange={(value) => {
-                const newModal = { ...statusChangeModal, newStatus: value };
-                setStatusChangeModal(newModal);
-              }}
-            >
-              {statusChangeModal.component && buildAllowedStatuses(statusChangeModal.component).map(status => (
-                <Select.Option key={status.value} value={status.value}>
-                  <Tag color={getStatusColor(status.value)} style={{ marginRight: 8 }}>
-                    {status.label}
-                  </Tag>
-                  {status.label}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          {/* Campi DDT per stato "Spedito" */}
-          {statusChangeModal.newStatus === '6' && (
-            <>
-              <Divider orientation="left">Informazioni DDT</Divider>
-              <Form.Item
-                label="Numero DDT"
-                name="numeroDDT"
-                rules={[{ required: true, message: 'Il numero DDT è obbligatorio per la spedizione' }]}
-              >
-                <Input placeholder="Inserisci numero DDT" />
-              </Form.Item>
-              <Form.Item
-                label="Data DDT"
-                name="dataDDT"
-                rules={[{ required: true, message: 'La data DDT è obbligatoria per la spedizione' }]}
-              >
-                <DatePicker style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item
-                label="Corriere"
-                name="corriere"
-              >
-                <Input placeholder="Nome corriere (opzionale)" />
-              </Form.Item>
-              <Form.Item
-                label="Numero di tracking"
-                name="tracking"
-              >
-                <Input placeholder="Codice tracking (opzionale)" />
-              </Form.Item>
-            </>
-          )}
           
           <Form.Item
             label="Nota (opzionale)"
             name="note"
           >
-            <Input.TextArea rows={3} placeholder="Inserisci eventuali note..." />
+            <Input.TextArea 
+              rows={3} 
+              placeholder="Inserisci una nota per questo cambio di stato..."
+            />
           </Form.Item>
+          
+          {requiresDDT(statusChangeModal.newStatus) && (
+            <>
+              <Divider orientation="left">Dati DDT</Divider>
+              <Form.Item
+                label="Numero DDT"
+                name="ddtNumber"
+              >
+                <Input placeholder="Inserisci numero DDT..." />
+              </Form.Item>
+              
+              <Form.Item
+                label="Data DDT"
+                name="ddtDate"
+              >
+                <Input type="date" />
+              </Form.Item>
+            </>
+          )}
         </Form>
       </Modal>
 
