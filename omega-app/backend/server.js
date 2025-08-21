@@ -30,8 +30,74 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // In-memory store (PoC)
-let components = [];
-let commesse = [{ _id: 'c1', code: 'COM-001', name: 'Commessa PoC', notes: 'Esempio' }];
+let components = [
+  {
+    _id: 'cmp_1',
+    commessaId: 'c1',
+    commessaName: 'Commessa PoC',
+    name: 'Componente 1',
+    barcode: 'BC001',
+    status: '1',
+    verificato: true,
+    cancellato: false,
+    history: [{ from: '', to: '1', date: new Date('2024-01-10'), note: 'Creato', user: 'admin' }]
+  },
+  {
+    _id: 'cmp_2',
+    commessaId: 'c1',
+    commessaName: 'Commessa PoC',
+    name: 'Componente 2',
+    barcode: 'BC002',
+    status: '5',
+    verificato: false,
+    cancellato: false,
+    history: [{ from: '', to: '1', date: new Date('2024-01-10'), note: 'Creato', user: 'admin' }]
+  },
+  {
+    _id: 'cmp_3',
+    commessaId: 'c2',
+    commessaName: 'Commessa Test',
+    name: 'Componente 3',
+    barcode: 'BC003',
+    status: '6',
+    verificato: true,
+    cancellato: false,
+    history: [
+      { from: '', to: '1', date: new Date('2024-01-10'), note: 'Creato', user: 'admin' },
+      { from: '1', to: '6', date: new Date(), note: 'Spedito oggi', user: 'admin' }
+    ]
+  },
+  {
+    _id: 'cmp_4',
+    commessaId: 'c1',
+    commessaName: 'Commessa PoC',
+    name: 'Componente 4',
+    barcode: 'BC004',
+    status: '4:ZINCATURA:IN',
+    verificato: false,
+    cancellato: false,
+    trattamenti: ['ZINCATURA'],
+    history: [{ from: '', to: '1', date: new Date('2024-01-10'), note: 'Creato', user: 'admin' }]
+  },
+  {
+    _id: 'cmp_5',
+    commessaId: 'c2',
+    commessaName: 'Commessa Test',
+    name: 'Componente 5',
+    barcode: 'BC005',
+    status: '6',
+    verificato: true,
+    cancellato: false,
+    history: [
+      { from: '', to: '1', date: new Date('2024-01-09'), note: 'Creato', user: 'admin' },
+      { from: '1', to: '6', date: new Date('2024-01-09'), note: 'Spedito ieri', user: 'admin' }
+    ]
+  }
+];
+let commesse = [
+  { _id: 'c1', code: 'COM-001', name: 'Commessa PoC', notes: 'Esempio' },
+  { _id: 'c2', code: 'COM-002', name: 'Commessa Test', notes: 'Test data' }
+];
 
 // Health
 app.get('/health', (req, res) => {
@@ -92,6 +158,112 @@ app.get('/commesse/:id', (req, res) => {
   const c = commesse.find(x => x._id === req.params.id);
   if (!c) return res.status(404).json({ error: 'commessa not found' });
   res.json(c);
+});
+
+// Get Stats API - calculates dashboard indicators
+app.get('/getStats', (req, res) => {
+  try {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    // Filter out deleted components
+    const activeComponents = components.filter(c => !c.cancellato);
+    
+    // Handle edge case: no components
+    if (activeComponents.length === 0) {
+      return res.json({
+        inLavorazione: { count: 0, label: "In lavorazione" },
+        daSpedire: { count: 0, label: "Da spedire" },
+        verificato: { count: 0, percentage: 0, total: 0, label: "Non verificati" },
+        speditiOggi: { count: 0, label: "Spediti oggi" },
+        commesseAperte: { count: 0, label: "Commesse aperte" },
+        inTrattamento: { count: 0, label: "In trattamento" },
+        meta: {
+          totalComponents: 0,
+          timestamp: new Date().toISOString(),
+          calculatedAt: today.toLocaleDateString()
+        }
+      });
+    }
+    
+    // 1. In lavorazione: components where status != '6' (not shipped)
+    const inLavorazione = activeComponents.filter(c => c.status !== '6').length;
+    
+    // 2. Da spedire: components with status '5' (ready for delivery)
+    const daSpedire = activeComponents.filter(c => c.status === '5').length;
+    
+    // 3. Verificato: non-shipped components where verificato=false, with percentage
+    const nonSpediti = activeComponents.filter(c => c.status !== '6');
+    const nonVerificati = nonSpediti.filter(c => !c.verificato).length;
+    const verificatoPercentage = nonSpediti.length > 0 ? Math.round((nonVerificati / nonSpediti.length) * 100) : 0;
+    
+    // 4. Spediti oggi: components with status '6' and today's date
+    const speditiOggi = activeComponents.filter(c => {
+      if (c.status !== '6') return false;
+      
+      // Check if any history entry shows transition to '6' today
+      const speditoToday = c.history?.some(h => {
+        if (h.to !== '6') return false;
+        const historyDate = new Date(h.date);
+        const historyDateStr = historyDate.toISOString().split('T')[0];
+        return historyDateStr === todayStr;
+      });
+      
+      return speditoToday;
+    }).length;
+    
+    // 5. Commesse aperte: commesse that have at least one non-shipped component
+    const commesseConComponentiNonSpediti = new Set();
+    activeComponents.forEach(c => {
+      if (c.status !== '6') {
+        commesseConComponentiNonSpediti.add(c.commessaId);
+      }
+    });
+    const commesseAperte = commesseConComponentiNonSpediti.size;
+    
+    // 6. In trattamento: components in treatment states (status starting with '4:')
+    const inTrattamento = activeComponents.filter(c => c.status && c.status.startsWith('4:')).length;
+    
+    const stats = {
+      inLavorazione: {
+        count: inLavorazione,
+        label: "In lavorazione"
+      },
+      daSpedire: {
+        count: daSpedire,
+        label: "Da spedire"
+      },
+      verificato: {
+        count: nonVerificati,
+        percentage: verificatoPercentage,
+        total: nonSpediti.length,
+        label: "Non verificati"
+      },
+      speditiOggi: {
+        count: speditiOggi,
+        label: "Spediti oggi"
+      },
+      commesseAperte: {
+        count: commesseAperte,
+        label: "Commesse aperte"
+      },
+      inTrattamento: {
+        count: inTrattamento,
+        label: "In trattamento"
+      },
+      // Meta information
+      meta: {
+        totalComponents: activeComponents.length,
+        timestamp: new Date().toISOString(),
+        calculatedAt: today.toLocaleDateString()
+      }
+    };
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('Error calculating stats:', error);
+    res.status(500).json({ error: 'Internal server error calculating stats' });
+  }
 });
 
 app.listen(PORT, () => console.log(`PoC backend listening on ${PORT}`));
