@@ -3,9 +3,6 @@ component-tracker/backend/node_modules
 component-tracker/backend/upload
 archivio*
 
-# Build artifacts
-omega-app/frontend/dist
-omega-app/backend/upload
 
 # Secrets
 *.env
