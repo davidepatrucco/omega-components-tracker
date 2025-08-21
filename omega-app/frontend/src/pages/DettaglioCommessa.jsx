@@ -15,7 +15,9 @@ import {
   message as antdMessage,
   Tooltip,
   Spin,
-  Divider
+  Divider,
+  Switch,
+  Timeline
 } from 'antd';
 import { 
   ArrowLeftOutlined, 
@@ -52,6 +54,8 @@ const DettaglioCommessa = () => {
     component: null 
   });
   const [statusChangeForm] = Form.useForm();
+  const [historyModal, setHistoryModal] = useState({ open: false, component: null });
+  const [detailsModal, setDetailsModal] = useState({ open: false, component: null });
 
   // Genera statusOptions dinamicamente usando la configurazione centralizzata  
   const generateStatusOptions = (component = null) => {
@@ -86,6 +90,7 @@ const DettaglioCommessa = () => {
     { title: 'UtA T', dataIndex: 'uta_t', key: 'uta_t', width: 60 },
     { title: 'Trattamenti', dataIndex: 'trattamenti', key: 'trattamenti', width: 120 },
     { title: 'Stato', dataIndex: 'status', key: 'status', width: 110 },
+    { title: 'Verificato', dataIndex: 'verificato', key: 'verificato', width: 90 },
     { title: 'Barcode', dataIndex: 'barcode', key: 'barcode', width: 80 },
     { title: 'Azioni', dataIndex: 'actions', key: 'actions', width: 80 }
   ];
@@ -261,10 +266,14 @@ const DettaglioCommessa = () => {
   };
 
   const requiresDDT = (status) => {
-    return status === '6' || status.includes(':ARR');
+    // Stati che richiedono DDT: "Spedito" e "Arrivato da trattamento"
+    return status === '6' || (status && status.includes(':ARR'));
   };
 
-  const handleDelete = async (key) => {
+  const requiresShippingInfo = (status) => {
+    // Stati che mostrano informazioni sulla spedizione: "Spedito" e "Arrivato da trattamento"
+    return status === '6' || (status && status.includes(':ARR'));
+  };  const handleDelete = async (key) => {
     try {
       const response = await api.delete(`/api/components/${key}`);
       
@@ -294,6 +303,7 @@ const DettaglioCommessa = () => {
       uta_t: 'PC',
       trattamenti: [],
       status: '1',
+      verificato: false,
       barcode: ''
     };
     setComponents(prev => [emptyRow, ...prev.filter(r => r.key !== 'new')]);
@@ -369,9 +379,23 @@ const DettaglioCommessa = () => {
       return {
         ...col,
         render: (text, record) => (
-          <Tag color={getStatusColor(text)}>
-            {getStatusLabel(text)}
-          </Tag>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Tag color={getStatusColor(text)}>
+              {getStatusLabel(text)}
+            </Tag>
+            {requiresShippingInfo(text) && (
+              <Tooltip title="Informazioni sulla spedizione">
+                <InfoCircleOutlined 
+                  style={{ 
+                    color: '#1890ff', 
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                  onClick={() => setDetailsModal({ open: true, component: record })}
+                />
+              </Tooltip>
+            )}
+          </div>
         ),
         onCell: (record) => ({
           record,
@@ -380,6 +404,24 @@ const DettaglioCommessa = () => {
           title: col.title,
           editing: isEditing(record),
           options: generateStatusOptions(record)
+        }),
+      };
+    }
+
+    if (col.dataIndex === 'verificato') {
+      return {
+        ...col,
+        render: (text, record) => (
+          <Tag color={text ? 'green' : 'orange'}>
+            {text ? 'Verificato' : 'Da verificare'}
+          </Tag>
+        ),
+        onCell: (record) => ({
+          record,
+          inputType: 'boolean',
+          dataIndex: col.dataIndex,
+          title: col.title,
+          editing: isEditing(record),
         }),
       };
     }
@@ -443,22 +485,16 @@ const DettaglioCommessa = () => {
                     />
                   </Tooltip>
                   {record.history && record.history.length > 0 && (
-                    <Tooltip title="Storico">
+                    <Tooltip title="Storico stati">
                       <Button 
                         icon={<HistoryOutlined />} 
                         shape="circle" 
                         size="small" 
-                        type={expandedRowKeys.includes(record._id) ? "primary" : "default"}
-                        onClick={() => {
-                          setExpandedRowKeys(prev => 
-                            prev.includes(record._id) 
-                              ? prev.filter(k => k !== record._id)
-                              : [...prev, record._id]
-                          );
-                        }}
+                        onClick={() => setHistoryModal({ open: true, component: record })}
                       />
                     </Tooltip>
                   )}
+
                   <Popconfirm 
                     title="Eliminare il componente?" 
                     onConfirm={() => handleDelete(record._id)} 
@@ -524,6 +560,8 @@ const DettaglioCommessa = () => {
             ))}
           </Select>
         );
+      } else if (inputType === 'boolean') {
+        inputNode = <Switch checkedChildren="Verificato" unCheckedChildren="Da verificare" />;
       } else if (inputType === 'number') {
         inputNode = <Input type="number" min="0" style={{ minWidth: 60 }} />;
       } else if (dataIndex === 'trattamenti') {
@@ -549,6 +587,7 @@ const DettaglioCommessa = () => {
             name={dataIndex}
             style={{ margin: 0 }}
             rules={[{ required: required, message: `${title} è obbligatorio` }]}
+            valuePropName={inputType === 'boolean' ? 'checked' : 'value'}
           >
             {inputNode}
           </Form.Item>
@@ -706,6 +745,170 @@ const DettaglioCommessa = () => {
             fontSize={16} 
           />
         </div>
+      </Modal>
+
+      {/* Modal Storico Stati */}
+      <Modal
+        title="Storico Cambi Stato"
+        open={historyModal.open}
+        onCancel={() => setHistoryModal({ open: false, component: null })}
+        footer={[
+          <Button key="close" onClick={() => setHistoryModal({ open: false, component: null })}>
+            Chiudi
+          </Button>
+        ]}
+        width={800}
+      >
+        {historyModal.component && (
+          <div>
+            <div style={{ marginBottom: 16 }}>
+              <Text strong>Componente: </Text>
+              <Text>{historyModal.component.descrizioneComponente}</Text>
+            </div>
+            
+            {historyModal.component.history && historyModal.component.history.length > 0 ? (
+              <Timeline
+                items={historyModal.component.history.map((change, index) => ({
+                  color: getStatusColor(change.to),
+                  children: (
+                    <div key={index}>
+                      <div style={{ marginBottom: 8 }}>
+                        <Tag color={getStatusColor(change.from)}>{getStatusLabel(change.from)}</Tag>
+                        <span> → </span>
+                        <Tag color={getStatusColor(change.to)}>{getStatusLabel(change.to)}</Tag>
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666', marginBottom: 4 }}>
+                        {new Date(change.date).toLocaleString('it-IT')}
+                        {change.user && ` • ${change.user}`}
+                      </div>
+                      {change.note && (
+                        <div style={{ fontSize: '12px', fontStyle: 'italic', marginBottom: 4 }}>
+                          "{change.note}"
+                        </div>
+                      )}
+                      {(change.ddt_number || change.ddt_date) && (
+                        <div style={{ fontSize: '12px', color: '#1890ff' }}>
+                          DDT: {change.ddt_number} {change.ddt_date && `(${new Date(change.ddt_date).toLocaleDateString('it-IT')})`}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }))}
+              />
+            ) : (
+              <div style={{ textAlign: 'center', color: '#999', padding: '20px 0' }}>
+                Nessun cambio di stato registrato
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Informazioni Spedizione */}
+      <Modal
+        title="Informazioni sulla Spedizione"
+        open={detailsModal.open}
+        onCancel={() => setDetailsModal({ open: false, component: null })}
+        footer={[
+          <Button key="close" onClick={() => setDetailsModal({ open: false, component: null })}>
+            Chiudi
+          </Button>
+        ]}
+        width={500}
+      >
+        {detailsModal.component && (
+          <div>
+            <div style={{ marginBottom: 16 }}>
+              <Text strong>Componente: </Text>
+              <Text>{detailsModal.component.descrizioneComponente}</Text>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <Text strong>Stato: </Text>
+              <Tag color={getStatusColor(detailsModal.component.status)}>
+                {getStatusLabel(detailsModal.component.status)}
+              </Tag>
+            </div>
+            
+            {/* Cerca DDT nei dati history */}
+            {(() => {
+              const historyWithDdt = detailsModal.component.history?.filter(h => 
+                (h.to === '6' || h.to?.includes(':ARR')) && (h.ddt_number || h.ddt_date)
+              ) || [];
+              
+              if (historyWithDdt.length > 0) {
+                return (
+                  <div>
+                    <Text strong style={{ display: 'block', marginBottom: 12 }}>Documenti di Trasporto:</Text>
+                    {historyWithDdt.map((historyItem, index) => (
+                      <div key={index} style={{ 
+                        marginBottom: 12, 
+                        padding: 12, 
+                        background: '#f5f5f5', 
+                        borderRadius: 6,
+                        border: '1px solid #d9d9d9'
+                      }}>
+                        <div style={{ marginBottom: 8 }}>
+                          <Text strong>Numero DDT: </Text>
+                          <Text>{historyItem.ddt_number || 'Non specificato'}</Text>
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <Text strong>Data DDT: </Text>
+                          <Text>
+                            {historyItem.ddt_date ? new Date(historyItem.ddt_date).toLocaleDateString('it-IT') : 'Non specificata'}
+                          </Text>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          Registrato il {new Date(historyItem.date).toLocaleDateString('it-IT')}
+                          {historyItem.user && ` da ${historyItem.user}`}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              
+              // Fallback: cerca DDT nel campo ddt del componente
+              if (detailsModal.component.ddt && detailsModal.component.ddt.length > 0) {
+                return (
+                  <div>
+                    <Text strong style={{ display: 'block', marginBottom: 12 }}>Documenti di Trasporto:</Text>
+                    {detailsModal.component.ddt.map((ddt, index) => (
+                      <div key={index} style={{ 
+                        marginBottom: 12, 
+                        padding: 12, 
+                        background: '#f5f5f5', 
+                        borderRadius: 6,
+                        border: '1px solid #d9d9d9'
+                      }}>
+                        <div style={{ marginBottom: 8 }}>
+                          <Text strong>Numero DDT: </Text>
+                          <Text>{ddt.ddt_number || 'Non specificato'}</Text>
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <Text strong>Data DDT: </Text>
+                          <Text>
+                            {ddt.ddt_date ? new Date(ddt.ddt_date).toLocaleDateString('it-IT') : 'Non specificata'}
+                          </Text>
+                        </div>
+                        {ddt.createdBy && (
+                          <div style={{ fontSize: '12px', color: '#666' }}>
+                            Creato da {ddt.createdBy} il {new Date(ddt.createdAt).toLocaleDateString('it-IT')}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              
+              return (
+                <div style={{ textAlign: 'center', color: '#999', padding: '20px 0' }}>
+                  <Text type="secondary">Nessun documento di trasporto disponibile</Text>
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </Modal>
     </div>
   );
