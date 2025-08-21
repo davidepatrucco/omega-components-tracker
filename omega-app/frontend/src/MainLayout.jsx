@@ -4,8 +4,8 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import HeaderBar from './components/HeaderBar';
 import NotificationBadge from './components/NotificationBadge';
 import { useAuth } from './AuthContext';
-import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined, UserOutlined } from '@ant-design/icons';
-import { AppstoreOutlined, FileOutlined, PieChartOutlined, BellOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined, UserOutlined, BellOutlined } from '@ant-design/icons';
+
 const { Header, Sider, Content } = Layout;
 
 export default function MainLayout(){

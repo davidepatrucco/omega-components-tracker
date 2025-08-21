@@ -28,6 +28,7 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import BarcodeWithText from '../BarcodeWithText';
+import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses } from '../utils/statusUtils';
 import { api } from '../api';
 
 const { Title, Text } = Typography;
@@ -44,29 +45,41 @@ const DettaglioCommessa = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [barcodeModal, setBarcodeModal] = useState({ open: false, value: '' });
 
-  const statusOptions = [
-    { value: '1', label: '1 - Nuovo', color: 'blue' },
-    { value: '2', label: '2 - In lavorazione', color: 'orange' },
-    { value: '3', label: '3 - Controllo qualità', color: 'purple' },
-    { value: '4', label: '4 - Trattamento', color: 'cyan' },
-    { value: '5', label: '5 - Pronto', color: 'green' },
-    { value: '6', label: '6 - Spedito', color: 'gray' }
-  ];
+  // Genera statusOptions dinamicamente usando la configurazione centralizzata  
+  const generateStatusOptions = (component = null) => {
+    if (!component) {
+      // Stati base per la creazione di nuovi componenti
+      return [
+        { value: '1', label: getStatusLabel('1'), color: getStatusColor('1') },
+        { value: '2', label: getStatusLabel('2'), color: getStatusColor('2') },
+        { value: '2-ext', label: getStatusLabel('2-ext'), color: getStatusColor('2-ext') },
+        { value: '3', label: getStatusLabel('3'), color: getStatusColor('3') }
+      ];
+    }
+    
+    // Stati consentiti per il componente specifico
+    const allowedStatuses = buildAllowedStatuses(component);
+    return allowedStatuses.map(status => ({
+      value: status,
+      label: getStatusLabel(status),
+      color: getStatusColor(status)
+    }));
+  };
 
   const columnsDef = [
-    { title: 'Codice Componente', dataIndex: 'descrizioneComponente', key: 'descrizioneComponente', width: 150 },
-    { title: 'Note', dataIndex: 'componentNotes', key: 'componentNotes', width: 200 },
-    { title: 'Livello', dataIndex: 'level', key: 'level', width: 80 },
-    { title: 'Criticità', dataIndex: 'crit', key: 'crit', width: 80 },
-    { title: 'BOM', dataIndex: 'bom_text', key: 'bom_text', width: 150 },
-    { title: 'Qty U', dataIndex: 'qty_u', key: 'qty_u', width: 80 },
-    { title: 'UtA U', dataIndex: 'uta_u', key: 'uta_u', width: 80 },
-    { title: 'Qty T', dataIndex: 'qty_t', key: 'qty_t', width: 80 },
-    { title: 'UtA T', dataIndex: 'uta_t', key: 'uta_t', width: 80 },
+    { title: 'Codice Componente', dataIndex: 'descrizioneComponente', key: 'descrizioneComponente', width: 140 },
+    { title: 'Note', dataIndex: 'componentNotes', key: 'componentNotes', width: 180 },
+    { title: 'Liv.', dataIndex: 'level', key: 'level', width: 70 },
+    { title: 'Crit.', dataIndex: 'crit', key: 'crit', width: 70 },
+    { title: 'BOM', dataIndex: 'bom_text', key: 'bom_text', width: 140 },
+    { title: 'Qty U', dataIndex: 'qty_u', key: 'qty_u', width: 60 },
+    { title: 'UtA U', dataIndex: 'uta_u', key: 'uta_u', width: 60 },
+    { title: 'Qty T', dataIndex: 'qty_t', key: 'qty_t', width: 60 },
+    { title: 'UtA T', dataIndex: 'uta_t', key: 'uta_t', width: 60 },
     { title: 'Trattamenti', dataIndex: 'trattamenti', key: 'trattamenti', width: 120 },
-    { title: 'Stato', dataIndex: 'status', key: 'status', width: 120 },
-    { title: 'Barcode', dataIndex: 'barcode', key: 'barcode', width: 120 },
-    { title: 'Azioni', dataIndex: 'actions', key: 'actions', width: 150 }
+    { title: 'Stato', dataIndex: 'status', key: 'status', width: 110 },
+    { title: 'Barcode', dataIndex: 'barcode', key: 'barcode', width: 80 },
+    { title: 'Azioni', dataIndex: 'actions', key: 'actions', width: 80 }
   ];
 
   useEffect(() => {
@@ -213,14 +226,21 @@ const DettaglioCommessa = () => {
     form.setFieldsValue(emptyRow);
   };
 
+  // Usa la configurazione centralizzata degli stati
   const getStatusColor = (status) => {
-    const statusOption = statusOptions.find(s => s.value === status);
-    return statusOption ? statusOption.color : 'default';
-  };
-
-  const getStatusLabel = (status) => {
-    const statusOption = statusOptions.find(s => s.value === status);
-    return statusOption ? statusOption.label : status;
+    const statusDisplay = formatStatusDisplay(status);
+    
+    // Mappa i colori hex ai nomi di colori Ant Design
+    const colorMap = {
+      '#d9d9d9': 'default',
+      '#1890ff': 'blue', 
+      '#722ed1': 'purple',
+      '#52c41a': 'green',
+      '#faad14': 'gold',
+      '#ff4d4f': 'red'
+    };
+    
+    return colorMap[statusDisplay.color] || 'default';
   };
 
   const columns = columnsDef.map((col) => {
@@ -285,7 +305,7 @@ const DettaglioCommessa = () => {
           dataIndex: col.dataIndex,
           title: col.title,
           editing: isEditing(record),
-          options: statusOptions
+          options: generateStatusOptions(record)
         }),
       };
     }
@@ -431,7 +451,7 @@ const DettaglioCommessa = () => {
           </Select>
         );
       } else if (inputType === 'number') {
-        inputNode = <Input type="number" min="0" />;
+        inputNode = <Input type="number" min="0" style={{ minWidth: 60 }} />;
       } else if (dataIndex === 'trattamenti') {
         // Gestione speciale per i trattamenti con tag
         inputNode = (
@@ -444,7 +464,7 @@ const DettaglioCommessa = () => {
           />
         );
       } else {
-        inputNode = <Input />;
+        inputNode = <Input style={{ minWidth: 50 }}/>;
       }
     }
 
@@ -539,6 +559,8 @@ const DettaglioCommessa = () => {
         footer={null}
         centered
         title="Barcode"
+        width={800}
+        style={{ maxWidth: '90vw' }}
       >
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <BarcodeWithText 
