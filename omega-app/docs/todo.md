@@ -4,7 +4,6 @@ to fix:
 
 1) Failed to load resource: the server responded with a status of 404 (Not Found) -- http://localhost:5173/favicon.ico
 
-2) Nel menu la icon bar deve segnalare se ci sono notifiche non lette. Serve quindi una pagina che chiamiamo "notifiche" che starà sul menu di sinistra, e dovrà mostrare l'elenco delle notifiche per l'utente, in relazione ad una API /getNotifiche cui si passa l'utenza e restituisce l'elenco delle notifiche. In breve, implementa un meccanismo di gestione notifiche che si riflette nella api /notifiche e nella pagina di menu a sinistra "notifiche". gestisci quelle lette, quelle da leggere e adotta le best practice di questi casi
 
 3) centra le icone dentro la colonna "azioni" nella pagina delle commesse
 
