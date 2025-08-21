@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Button } from 'antd';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import HeaderBar from './components/HeaderBar';
 import NotificationBadge from './components/NotificationBadge';
 import { useAuth } from './AuthContext';
-import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined, UserOutlined, BellOutlined, CloudOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined, UserOutlined, BellOutlined, CloudOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
 
@@ -49,15 +49,36 @@ export default function MainLayout(){
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ padding: 0, background: '#fff' }}>
+      <Header style={{ padding: 0, background: '#fff', position: 'sticky', top: 0, zIndex: 1000 }}>
         <HeaderBar collapsed={collapsed} onToggle={() => setCollapsed(s => !s)} />
       </Header>
 
       <Layout>
-        <Sider collapsible collapsed={collapsed} trigger={null} width={220} style={{ background: '#fff', borderRight: '1px solid rgba(15,23,42,0.04)' }}>
-          <div style={{ height: 64, display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#4f46e5,#06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, boxShadow: '0 6px 18px rgba(79,70,229,0.12)' }}>Ω</div>
-            {!collapsed && <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a', letterSpacing: 0.2 }}>Omega</div>}
+        <Sider 
+          collapsible 
+          collapsed={collapsed} 
+          trigger={null} 
+          width={220} 
+          style={{ 
+            background: '#fff', 
+            borderRight: '1px solid rgba(15,23,42,0.04)',
+            position: 'sticky',
+            top: 64,
+            height: 'calc(100vh - 64px)',
+            overflow: 'auto',
+            zIndex: 999
+          }}
+        >
+          <div style={{ padding: '16px', borderBottom: '1px solid rgba(15,23,42,0.04)' }}>
+            <Button 
+              type="text" 
+              onClick={() => setCollapsed(s => !s)} 
+              aria-label="Toggle menu" 
+              style={{ width: '100%', textAlign: 'left' }} 
+              icon={collapsed ? <MenuUnfoldOutlined style={{ fontSize: 18 }} /> : <MenuFoldOutlined style={{ fontSize: 18 }} />}
+            >
+              {!collapsed && <span style={{ marginLeft: 8 }}>Menu</span>}
+            </Button>
           </div>
           <Menu mode="inline" defaultSelectedKeys={["lavorazioni"]} items={menuItems} style={{ border: 'none' }} />
         </Sider>
