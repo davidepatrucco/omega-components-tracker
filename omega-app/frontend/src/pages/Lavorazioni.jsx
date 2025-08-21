@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../api';
-import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch } from 'antd';
+import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch, DatePicker, Divider } from 'antd';
 import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined } from '@ant-design/icons';
 import BarcodeWithText from '../BarcodeWithText';
-import { getStatusLabel, getStatusColor, formatStatusDisplay } from '../utils/statusUtils';
+import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses } from '../utils/statusUtils';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 
+// Funzione per determinare se lo stato richiede DDT
+const requiresDDT = (status) => {
+  return status === '6'; // Spedito
+};
+
 export default function Lavorazioni(){
+  const navigate = useNavigate();
   const [components, setComponents] = useState([]);
   const [commesse, setCommesse] = useState([]);
   const [stats, setStats] = useState({
@@ -117,11 +124,28 @@ export default function Lavorazioni(){
 
   const handleStatusChange = async (values) => {
     try {
-      const { component, newStatus } = statusChangeModal;
+      const { component } = statusChangeModal;
+      const newStatus = values.newStatus;
+      
       const updateData = { 
         status: newStatus,
         note: values.note || undefined
       };
+
+      // Se lo stato è "Spedito" (6), aggiungi i dati DDT
+      if (requiresDDT(newStatus)) {
+        if (!values.numeroDDT || !values.dataDDT) {
+          message.error('Numero DDT e Data DDT sono obbligatori per la spedizione');
+          return;
+        }
+        
+        updateData.ddt = {
+          numero: values.numeroDDT,
+          date: values.dataDDT.toISOString(),
+          corriere: values.corriere || '',
+          tracking: values.tracking || ''
+        };
+      }
 
       await api.put(`/api/components/${component._id}`, updateData);
       message.success('Stato aggiornato con successo');
@@ -144,12 +168,17 @@ export default function Lavorazioni(){
     }
   };
 
-  const openStatusChangeModal = (component, newStatus) => {
+  // Funzione per aprire la modal di cambio stato con select libero
+  const openStatusChangeModal = (component) => {
     setStatusChangeModal({
       open: true,
       component,
       currentStatus: component.status,
-      newStatus
+      newStatus: '' // Inizialmente vuoto per selezione libera
+    });
+    statusChangeForm.setFieldsValue({
+      newStatus: undefined,
+      note: ''
     });
   };
 
@@ -166,7 +195,6 @@ export default function Lavorazioni(){
       
       // Filtro stati spediti
       if (!filters.includeShipped && comp.status === '6') return false;
-      if (comp.status === '6') return false; // Escludiamo sempre i cancellati (status 6)
       
       // Filtro testo ricerca
       if (filters.search) {
@@ -325,7 +353,7 @@ export default function Lavorazioni(){
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                style={{ borderRadius: 8 }}
+                style={{ borderRadius: 8, marginTop:20}}
                 allowClear
               />
             </Col>
@@ -375,7 +403,7 @@ export default function Lavorazioni(){
                     { label: '2 - Produzione Interna', value: '2' },
                     { label: '3 - Costruito', value: '3' },
                     { label: '4 - In preparazione nichelatura', value: '4' },
-                    { label: '5 - Spedito', value: '5' }
+                    { label: '6 - Spedito', value: '6' }
                   ]}
                 />
               </Space>
@@ -434,9 +462,16 @@ export default function Lavorazioni(){
                     height: '100%',
                     borderRadius: 8,
                     border: '1px solid #f0f0f0',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    cursor: 'pointer'
                   }}
                   bodyStyle={{ padding: 16 }}
+                  onClick={() => navigate('/dettaglio-commessa', { 
+                    state: { 
+                      commessaId: comp.commessaId, 
+                      highlightComponentId: comp._id 
+                    } 
+                  })}
                   extra={
                     <Space>
                       {/* Icona info completa */}
@@ -450,7 +485,7 @@ export default function Lavorazioni(){
                       </Tooltip>
                       
                       {/* Icona DDT per stati spediti */}
-                      {(comp.status === '5') && (
+                      {(comp.status === '6') && (
                         <Tooltip title="Informazioni spedizione">
                           <Button
                             type="text"
@@ -539,11 +574,9 @@ export default function Lavorazioni(){
                       <Tag 
                         color={handleStatusColor(comp.status)} 
                         style={{ fontSize: 11, fontWeight: 'bold', cursor: 'pointer' }}
-                        onClick={() => {
-                          // Logic for next status - simplified for demo
-                          const currentStatus = parseInt(comp.status);
-                          const nextStatus = currentStatus === 6 ? 1 : currentStatus + 1;
-                          openStatusChangeModal(comp, nextStatus.toString());
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openStatusChangeModal(comp);
                         }}
                       >
                         {getStatusLabel(comp.status)}
@@ -617,16 +650,69 @@ export default function Lavorazioni(){
             <Text strong>Componente: </Text>
             <Text>{statusChangeModal.component?.descrizioneComponente}</Text>
           </div>
+          
           <div style={{ marginBottom: 16 }}>
-            <Text strong>Cambio stato: </Text>
+            <Text strong>Stato attuale: </Text>
             <Tag color={getStatusColor(statusChangeModal.currentStatus)}>
               {getStatusLabel(statusChangeModal.currentStatus)}
             </Tag>
-            <Text> → </Text>
-            <Tag color={getStatusColor(statusChangeModal.newStatus)}>
-              {getStatusLabel(statusChangeModal.newStatus)}
-            </Tag>
           </div>
+
+          <Form.Item
+            label="Nuovo stato"
+            name="newStatus"
+            rules={[{ required: true, message: 'Seleziona il nuovo stato' }]}
+          >
+            <Select
+              placeholder="Seleziona stato"
+              onChange={(value) => {
+                const newModal = { ...statusChangeModal, newStatus: value };
+                setStatusChangeModal(newModal);
+              }}
+            >
+              {statusChangeModal.component && buildAllowedStatuses(statusChangeModal.component).map(status => (
+                <Select.Option key={status.value} value={status.value}>
+                  <Tag color={getStatusColor(status.value)} style={{ marginRight: 8 }}>
+                    {status.label}
+                  </Tag>
+                  {status.label}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          {/* Campi DDT per stato "Spedito" */}
+          {statusChangeModal.newStatus === '6' && (
+            <>
+              <Divider orientation="left">Informazioni DDT</Divider>
+              <Form.Item
+                label="Numero DDT"
+                name="numeroDDT"
+                rules={[{ required: true, message: 'Il numero DDT è obbligatorio per la spedizione' }]}
+              >
+                <Input placeholder="Inserisci numero DDT" />
+              </Form.Item>
+              <Form.Item
+                label="Data DDT"
+                name="dataDDT"
+                rules={[{ required: true, message: 'La data DDT è obbligatoria per la spedizione' }]}
+              >
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                label="Corriere"
+                name="corriere"
+              >
+                <Input placeholder="Nome corriere (opzionale)" />
+              </Form.Item>
+              <Form.Item
+                label="Numero di tracking"
+                name="tracking"
+              >
+                <Input placeholder="Codice tracking (opzionale)" />
+              </Form.Item>
+            </>
+          )}
           
           <Form.Item
             label="Nota (opzionale)"
