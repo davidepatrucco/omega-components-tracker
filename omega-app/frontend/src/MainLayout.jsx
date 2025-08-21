@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Layout, Menu } from 'antd';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import HeaderBar from './components/HeaderBar';
+import NotificationBadge from './components/NotificationBadge';
 import { useAuth } from './AuthContext';
-import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, FileOutlined, PieChartOutlined, BellOutlined } from '@ant-design/icons';
 const { Header, Sider, Content } = Layout;
 
 export default function MainLayout(){
@@ -24,7 +25,14 @@ export default function MainLayout(){
   const menuItems = [
     { key: 'lavorazioni', icon: <AppstoreOutlined />, label: <Link to="/">Lavorazioni</Link> },
     { key: 'commesse', icon: <FileOutlined />, label: <Link to="/commesse">Commesse</Link> },
-    { key: 'notifiche', icon: <CarryOutOutlined />, label: <Link to="/notifiche">Notifiche</Link> },
+    { 
+      key: 'notifiche', 
+      icon: <div style={{ position: 'relative', display: 'inline-block' }}>
+        <BellOutlined />
+        <NotificationBadge style={{ position: 'absolute', top: -8, right: -8 }} />
+      </div>, 
+      label: <Link to="/notifiche">Notifiche</Link> 
+    },
     { key: 'report', icon: <PieChartOutlined />, label: <Link to="/report">Reporting</Link> }
   ];
 
