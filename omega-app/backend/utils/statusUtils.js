@@ -13,7 +13,7 @@ const {
   BASE_STATUSES,
   TREATMENT_PHASES,
   createTreatmentStatus
-} = require('../../shared/statusConfig.js');
+} = require('../shared/statusConfig.js');
 
 /**
  * Middleware per applicare automaticamente la transizione a "Pronto per consegna"
