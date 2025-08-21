@@ -1,13 +1,15 @@
 to fix:
 
-0) l'header ed il menu devono essere sticky e on top a tutto (anche la spalla con il menu a sx). L'icona ed il titolo Omega devono essere nell'header e non nella spalla. L'header deve essere 100 width, quindi la spalla deve stare sotto l'header. Il menu hamburger deve essere nella spalla sopra il menu e consentire di collassare la spalla
-
-1) perchè dentro Gestione commesse, se faccio "cancella", ma poi Eliminare la commessa "NO", e la pagina si ricarica? 
 
 
-3) 
+notifiche:
+-l'header ed il menu devono essere sticky e on top a tutto (anche la spalla con il menu a sx). L'icona ed il titolo Omega devono essere nell'header e non nella spalla. L'header deve essere 100 width, quindi la spalla deve stare sotto l'header. Il menu hamburger deve essere nella spalla sopra il menu e consentire di collassare la spalla
 - il cambiamento di stato da un qualunque stato verso "pronto per spedzione" (credo sia 5) deve scatenare una notifica per gli utenti di tipo "UFF"
 - il cambiamento di stato verso "costruito", SE prevede un trattamento, deve  scatenare una notifica per gli utenti di tipo "UFF" e "TRATT"
+small fixes:
+- la campanella nel menu deve essere coerente con il numero di notifiche attive (ora è schiantato a 3)
+- perchè dentro Gestione commesse, se faccio "cancella", ma poi Eliminare la commessa "NO", e la pagina si ricarica? 
+
 
 4) Sia nella pagina di gestione commesse, che nella pagina delle Lavorazioni, by default filtra solo per le commesse per le quali esiste almeno una componente ancora non spedito, passando al backend il flag "solochiuse"
  Sull pagina di GEstione Commesse, Aggiungi però un checkbox, tipo in alto a destra sulla stessa riga di Crea commessa e Upload nuova commessa, che dice "Mostra anche commesse chiuse". Se è checcato, in questo caso, deve passare a back-end l'informazione di Estrarre anche le commesse chiuse.
