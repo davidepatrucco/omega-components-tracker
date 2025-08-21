@@ -112,6 +112,26 @@ const DettaglioCommessa = () => {
     try {
       const row = await form.validateFields();
       
+      // Normalizza i trattamenti in un array
+      if (row.trattamenti) {
+        if (typeof row.trattamenti === 'string') {
+          // Se è una stringa, splittala sui separatori comuni
+          row.trattamenti = row.trattamenti
+            .split(/[+,;]/)
+            .map(t => t.trim().toLowerCase())
+            .filter(t => t && t.length > 0);
+        } else if (!Array.isArray(row.trattamenti)) {
+          row.trattamenti = [];
+        } else {
+          // Se è già un array, normalizza ogni elemento
+          row.trattamenti = row.trattamenti
+            .map(t => typeof t === 'string' ? t.trim().toLowerCase() : t)
+            .filter(t => t && t.length > 0);
+        }
+      } else {
+        row.trattamenti = [];
+      }
+      
       if (adding) {
         // Creazione nuovo componente
         const componentData = {
@@ -122,7 +142,6 @@ const DettaglioCommessa = () => {
           commessaNotes: commessa?.notes || '',
           commessaCreatedAt: commessa?.createdAt || new Date(),
           status: row.status || '1',
-          trattamenti: row.trattamenti ? [row.trattamenti] : [],
           allowedStatuses: ['1', '2', '3', '5', '6'], // Base statuses
           verificato: false,
           cancellato: false
@@ -140,8 +159,7 @@ const DettaglioCommessa = () => {
         const componentToUpdate = components.find(c => c._id === key);
         const updatedData = {
           ...componentToUpdate,
-          ...row,
-          trattamenti: row.trattamenti ? [row.trattamenti] : componentToUpdate.trattamenti
+          ...row
         };
         
         const response = await api.put(`/api/components/${key}`, updatedData);
@@ -187,7 +205,7 @@ const DettaglioCommessa = () => {
       uta_u: 'PC',
       qty_t: 1,
       uta_t: 'PC',
-      trattamenti: '-',
+      trattamenti: [],
       status: '1',
       barcode: ''
     };
@@ -227,16 +245,25 @@ const DettaglioCommessa = () => {
       return {
         ...col,
         render: (text, record) => {
-          if (Array.isArray(text)) {
-            return text.map((t, i) => (
-              <Tag key={i} color="blue">{t}</Tag>
-            ));
+          if (Array.isArray(text) && text.length > 0) {
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {text.map((t, i) => (
+                  <Tag key={i} color="blue" style={{ marginBottom: 4 }}>
+                    {t}
+                  </Tag>
+                ))}
+              </div>
+            );
           }
-          return <Tag color="blue">{text || '-'}</Tag>;
+          if (typeof text === 'string' && text.trim() && text !== '-') {
+            return <Tag color="blue">{text}</Tag>;
+          }
+          return <span style={{ color: '#999', fontStyle: 'italic' }}>Nessun trattamento</span>;
         },
         onCell: (record) => ({
           record,
-          inputType: 'text',
+          inputType: 'tags',
           dataIndex: col.dataIndex,
           title: col.title,
           editing: isEditing(record),
@@ -405,6 +432,17 @@ const DettaglioCommessa = () => {
         );
       } else if (inputType === 'number') {
         inputNode = <Input type="number" min="0" />;
+      } else if (dataIndex === 'trattamenti') {
+        // Gestione speciale per i trattamenti con tag
+        inputNode = (
+          <Select
+            mode="tags"
+            style={{ minWidth: 200 }}
+            placeholder="Inserisci trattamenti (es: nichelatura, marcatura)"
+            tokenSeparators={[',', '+', ';']}
+            open={false} // Impedisce dropdown, solo tag input
+          />
+        );
       } else {
         inputNode = <Input />;
       }

@@ -210,6 +210,11 @@ router.post('/import-excel', requireAuth, upload.single('excel'), async (req, re
           .map(t => t.trim()) // Rimuove spazi bianchi
           .filter(t => t && t.length > 0) // Rimuove elementi vuoti
           .map(t => t.toLowerCase()); // Normalizza in lowercase
+          
+        console.log(`🔧 Parsed treatments for component "${rowArr[idxComp]}":`, {
+          original: trattamentoField,
+          parsed: trattamenti
+        });
       }
       
       const componente = new Component({
