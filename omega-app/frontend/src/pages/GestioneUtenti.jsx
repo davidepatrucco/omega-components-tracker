@@ -21,8 +21,8 @@ function GestioneUtenti() {
 
   const fetchUtenti = async () => {
     try {
-      const res = await api.get('/utenti');
-      setUtenti(res.data);
+      const res = await api.get('/api/utenti');
+      setUtenti(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setUtenti([]);
       message.error(err.userMessage || 'Errore nel caricamento degli utenti');
@@ -61,14 +61,14 @@ function GestioneUtenti() {
       const row = await form.validateFields();
       if (key && key !== 'new' && !key.startsWith('new_')) {
         if (row.password) {
-          await api.put(`/utenti/${key}/reset-password`, { password: row.password });
+          await api.put(`/api/utenti/${key}/reset-password`, { password: row.password });
         }
         const { password, ...toSend } = row;
-        await api.put(`/utenti/${key}`, toSend);
+        await api.put(`/api/utenti/${key}`, toSend);
         message.success('Utente aggiornato');
       } else {
         if (!row.password) return message.error('Password obbligatoria');
-        await api.post('/utenti', row);
+        await api.post('/api/utenti', row);
         message.success('Utente creato');
       }
       setEditingKey('');
@@ -80,7 +80,7 @@ function GestioneUtenti() {
 
   const handleDelete = async (id) => {
     try {
-      await api.delete(`/utenti/${id}`);
+      await api.delete(`/api/utenti/${id}`);
       message.success('Utente eliminato');
       fetchUtenti();
     } catch (err) {
@@ -227,7 +227,7 @@ function GestioneUtenti() {
         <Table 
           components={{ body: { cell: EditableCell } }} 
           bordered 
-          dataSource={utenti} 
+          dataSource={Array.isArray(utenti) ? utenti : []} 
           columns={mergedColumns} 
           rowKey={record => record._id || record.key}
           pagination={false}

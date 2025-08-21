@@ -1,13 +1,30 @@
 const express = require('express');
 const router = express.Router();
-const { ShareServiceClient, StorageSharedKeyCredential } = require('@azure/storage-file-share');
 const { requireAuth } = require('../middleware/auth');
+
+// Try to load Azure dependencies, but don't fail if they're not available
+let ShareServiceClient, StorageSharedKeyCredential;
+let azureAvailable = false;
+
+try {
+  const azureStorage = require('@azure/storage-file-share');
+  ShareServiceClient = azureStorage.ShareServiceClient;
+  StorageSharedKeyCredential = azureStorage.StorageSharedKeyCredential;
+  azureAvailable = true;
+} catch (error) {
+  console.warn('Azure Storage dependencies not available. Files endpoints will return empty results.');
+  azureAvailable = false;
+}
 
 // Initialize Azure File Share client
 let shareClient = null;
 let rootDir = null;
 
 function initializeAzureClient() {
+  if (!azureAvailable) {
+    return false;
+  }
+
   const account = process.env.AZURE_STORAGE_ACCOUNT;
   const accountKey = process.env.AZURE_STORAGE_KEY;
   const shareName = process.env.AZURE_FILE_SHARE;
@@ -47,7 +64,12 @@ function requireAzureConfig(req, res, next) {
 }
 
 // GET /files - list all files
-router.get('/', requireAuth, requireAzureConfig, async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
+  if (!azureConfigured || !rootDir) {
+    // Return empty array instead of error when Azure is not configured
+    return res.json([]);
+  }
+  
   try {
     const files = [];
     for await (const item of rootDir.listFilesAndDirectories()) {

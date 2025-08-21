@@ -13,10 +13,15 @@ export default function ViewFiles() {
     setLoading(true);
     try {
       const response = await api.get('/api/files');
-      setFiles(response.data);
+      setFiles(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching files:', error);
-      message.error('Errore nel caricamento dei file');
+      setFiles([]);
+      if (error.response && error.response.status === 503) {
+        message.warning('Azure File Share non configurato. Contattare l\'amministratore.');
+      } else {
+        message.error('Errore nel caricamento dei file');
+      }
     } finally {
       setLoading(false);
     }
