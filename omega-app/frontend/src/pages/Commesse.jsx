@@ -201,6 +201,7 @@ export default function Commesse() {
             <Popconfirm 
               title="Eliminare la commessa?" 
               onConfirm={e => { e?.stopPropagation(); handleDelete(record._id); }} 
+              onCancel={e => { e?.stopPropagation(); }}
               okText="Sì" cancelText="No"
             >
               <Tooltip title="Elimina">
