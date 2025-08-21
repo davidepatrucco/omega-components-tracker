@@ -11,7 +11,7 @@ import {
   getStatusOrder,
   BASE_STATUSES,
   TREATMENT_PHASES
-} from '../../shared/statusConfig.js';
+} from '../../../shared/statusConfig.js';
 
 // Re-export delle funzioni principali per il frontend
 export {
