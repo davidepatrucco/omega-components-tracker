@@ -26,6 +26,7 @@ const PORT = process.env.PORT || 4000;
 
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174', // Aggiungi anche porta 5174 per il dev
   process.env.FRONTEND_ORIGIN_STAGE,
   process.env.FRONTEND_ORIGIN_PROD
 ].filter(Boolean);
