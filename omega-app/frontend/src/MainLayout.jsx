@@ -4,7 +4,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import HeaderBar from './components/HeaderBar';
 import NotificationBadge from './components/NotificationBadge';
 import { useAuth } from './AuthContext';
-import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined, UserOutlined, BellOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined, UserOutlined, BellOutlined, CloudOutlined } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
 
@@ -34,7 +34,8 @@ export default function MainLayout(){
       </div>, 
       label: <Link to="/notifiche">Notifiche</Link> 
     },
-    { key: 'report', icon: <PieChartOutlined />, label: <Link to="/report">Reporting</Link> }
+    { key: 'report', icon: <PieChartOutlined />, label: <Link to="/report">Reporting</Link> },
+    { key: 'files', icon: <CloudOutlined />, label: <Link to="/files">Vedi Files</Link> }
   ];
 
   // Add user management menu item only for admin users

@@ -58,6 +58,7 @@ const changeStatusRouter = require('./routes/changestatus');
 const statsRouter = require('./routes/stats');
 const utentiRouter = require('./routes/utenti');
 const notificationsRouter = require('./routes/notifications');
+const filesRouter = require('./routes/files');
 
 app.use('/api/components', componentsRouter);
 app.use('/api/commesse', commesseRouter);
@@ -65,6 +66,7 @@ app.use('/api/changestatus', changeStatusRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/utenti', utentiRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/files', filesRouter);
 
 // Health endpoint (reports basic health)
 app.get('/health', (req, res) => {
