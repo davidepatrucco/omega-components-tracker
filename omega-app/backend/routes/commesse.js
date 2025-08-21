@@ -204,8 +204,12 @@ router.post('/import-excel', requireAuth, upload.single('excel'), async (req, re
       let trattamenti = [];
       
       if (trattamentoField && typeof trattamentoField === 'string') {
-        // Assume che i trattamenti siano separati da virgole o altri delimitatori
-        trattamenti = trattamentoField.split(',').map(t => t.trim()).filter(t => t);
+        // Parse trattamenti separati da + o , o ;
+        trattamenti = trattamentoField
+          .split(/[+,;]/) // Split su +, virgola o punto e virgola
+          .map(t => t.trim()) // Rimuove spazi bianchi
+          .filter(t => t && t.length > 0) // Rimuove elementi vuoti
+          .map(t => t.toLowerCase()); // Normalizza in lowercase
       }
       
       const componente = new Component({

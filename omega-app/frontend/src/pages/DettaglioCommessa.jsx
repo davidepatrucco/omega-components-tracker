@@ -78,11 +78,11 @@ const DettaglioCommessa = () => {
       setLoading(true);
       
       // Recupera la commessa
-      const commessaResponse = await api.get(`/commesse/${id}`);
+      const commessaResponse = await api.get(`/api/commesse/${id}`);
       setCommessa(commessaResponse.data);
       
       // Recupera i componenti per questa commessa
-      const componentsResponse = await api.get(`/components/commessa/${id}`);
+      const componentsResponse = await api.get(`/api/components/commessa/${id}`);
       setComponents(componentsResponse.data || []);
       
     } catch (error) {
@@ -128,7 +128,7 @@ const DettaglioCommessa = () => {
           cancellato: false
         };
         
-        const response = await api.post('/components', componentData);
+        const response = await api.post('/api/components', componentData);
         
         if (response.status === 200 || response.status === 201) {
           antdMessage.success('Componente aggiunto');
@@ -144,7 +144,7 @@ const DettaglioCommessa = () => {
           trattamenti: row.trattamenti ? [row.trattamenti] : componentToUpdate.trattamenti
         };
         
-        const response = await api.put(`/components/${key}`, updatedData);
+        const response = await api.put(`/api/components/${key}`, updatedData);
         
         if (response.status === 200) {
           antdMessage.success('Componente aggiornato');
@@ -161,7 +161,7 @@ const DettaglioCommessa = () => {
 
   const handleDelete = async (key) => {
     try {
-      const response = await api.delete(`/components/${key}`);
+      const response = await api.delete(`/api/components/${key}`);
       
       if (response.status === 200) {
         antdMessage.success('Componente eliminato');

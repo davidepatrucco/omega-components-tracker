@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Menu } from 'antd';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useNavigate } from 'react-router-dom';
 import HeaderBar from './components/HeaderBar';
+import { useAuth } from './AuthContext';
 import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined } from '@ant-design/icons';
 const { Header, Sider, Content } = Layout;
 
 export default function MainLayout(){
   const [collapsed, setCollapsed] = useState(false);
+  const { token } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login');
+    }
+  }, [token, navigate]);
+
+  if (!token) {
+    return null; // Don't render anything while redirecting
+  }
 
   const menuItems = [
     { key: 'lavorazioni', icon: <AppstoreOutlined />, label: <Link to="/">Lavorazioni</Link> },
     { key: 'commesse', icon: <FileOutlined />, label: <Link to="/commesse">Commesse</Link> },
-    { key: 'report', icon: <CarryOutOutlined />, label: <Link to="/report">Notifiche</Link> },
+    { key: 'notifiche', icon: <CarryOutOutlined />, label: <Link to="/notifiche">Notifiche</Link> },
     { key: 'report', icon: <PieChartOutlined />, label: <Link to="/report">Reporting</Link> }
   ];
 

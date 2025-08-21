@@ -8,16 +8,32 @@ to fix:
 
 3) centra le icone dentro la colonna "azioni" nella pagina delle commesse
 
-5) Aggiorna ora i contatori all'interno della pagina delle lavorazioni. 
+4) Nella pagina di gestione commesse, by default filtra solo per le commesse per le quali esiste almeno una componente ancora non spedito, passando al backend il flag "solochiuse"
+ Aggiungi però na checkbox, tipo in alto a destra sulla stessa riga di Crea commessa e Upload nuova commessa, che dice "Mostra anche commesse chiuse". Se è checcato, in questo caso, deve passare a back-end l'informazione di Estrarre anche le commesse chiuse.
 
-Lavorazioni in corso:. Devono essere la somma di tutti i componenti che non sono in stato spedito. 
-Commesse aperte: è la somma delle commesse per le quali esiste almeno un componente che non è in stato spedito.
- Da verificare è la lista dei componenti per i quali il flag verificare è falso. Esprimi magari questo indicatore anche come percentuale rispetto al totale dei componenti non spediti. 
-In trattamento, :, questo indicatore deve riportare il numero dei componenti che sono in stato in trattamento. 
-Completate oggi :il numero dei componenti che sono stati spediti e hanno stato in data odierna.
+5)  aggiorniamo gli indicatori della pagina lavorazione
 
+- in lavorazione il numero di tutti i componenti esistenti al sistema per i quali lo stato non è spedito
+- da spedire: la somma dei componenti che sono in stato pronti per la consegna 
+- verificato il numero dei componenti non spediti per il quale il flag verificato è false. esprimilo anche come percentuale o con barrato rispetto al totale dei componenti non spediti 
+- spediti oggi il numero dei componenti che sono in stato spedito con data odierna 
+- commesse aperte, il numero delle commesse non componenti commesse per il quale esiste almeno un componente che non è in stato spedito
+- In trattamento, il numero dei componenti che sono in uno degli stati in trattamento.
 
-4) implementa ora la pagina di dettaglio commessa, raggiungibile cliccando sull'icona "dettaglio commessa" nella pagina delle commesse. Questa pagina dovrà mostrare tutte le informazioni relative alla commessa selezionata.
+il mio consiglio è di creare una api /getStats che ricalcola su backend e restituisce questi valori al fronted, che li mostra e basta
+
+6) Effettuiamo una gestione più fine legata ai trattamenti. Quando creo una commessa facendo Upload da Excel, il campo Trattamenti è una stringa-->OK. Molto bene. 
+
+Ho bisogno però di fare un parse di quella stringa per andare a identificare se ci sono dei più (+) e isolare i segmenti della stringa separati dai più. Quella diventerà la mia lista dei trattamenti da applicare e sarà visualizzata come tag. 
+
+esempio: nichelatura + marcatura + affettatura
+3 lavorazioni e 3 tag visualizzati: nichelatura, marcatura, affettatura
+
+Invece, l'inserimento manuale di un componente tramite il tasto più, quindi sulla colonna Trattamenti, è anch'esso da gestire come tag.
+
+7)Nella pagina lavorazioni ora inseriamo una sezione con delle card corrispondenti alle lavorazioni in corso ovvero i componenti che sono ancora in stato non spedito. Per ogni card deve essere espresso innanzitutto in un formato ordinato pulito il codice e il nome della commessa e poi deve essere espresso il codice componente visualizzato il codice barre se ci sono trattamenti e lo stato attuale del componente
+
+9) implementa ora la pagina di dettaglio commessa, raggiungibile cliccando sull'icona "dettaglio commessa" nella pagina delle commesse. Questa pagina dovrà mostrare tutte le informazioni relative alla commessa selezionata.
 
 
 ispirati alla precedente versione della pagina delle commesse, ma adattala al nuovo data model e alle nuove API

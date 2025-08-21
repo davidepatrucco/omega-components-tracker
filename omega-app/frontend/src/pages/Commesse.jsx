@@ -33,7 +33,7 @@ export default function Commesse() {
   const fetchCommesse = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/commesse');
+      const res = await api.get('/api/commesse');
       setCommesse(res.data);
     } catch (err) {
       setCommesse([]);
@@ -65,18 +65,19 @@ export default function Commesse() {
       if (notes !== undefined) payload.note = notes;
       
       // Find original record to get code and name if missing
-      const original = commesse.find(c => c._id === key);
+      const currentCommesse = Array.isArray(commesse) ? commesse : [];
+      const original = currentCommesse.find(c => c._id === key);
       if (!payload.code && original) payload.code = original.code;
       if (!payload.name && original) payload.name = original.name;
       
       if (adding) {
-        await api.post('/commesse', payload);
+        await api.post('/api/commesse', payload);
         message.success('Commessa creata');
         setAdding(false);
         setEditingKey('');
         fetchCommesse();
       } else {
-        await api.put(`/commesse/${key}`, payload);
+        await api.put(`/api/commesse/${key}`, payload);
         message.success('Commessa aggiornata');
         setEditingKey('');
         fetchCommesse();
@@ -90,7 +91,7 @@ export default function Commesse() {
 
   const handleDelete = async (id) => {
     try {
-      await api.delete(`/commesse/${id}`);
+      await api.delete(`/api/commesse/${id}`);
       message.success('Commessa eliminata');
       fetchCommesse();
     } catch (err) {
@@ -118,7 +119,7 @@ export default function Commesse() {
       if (note) formData.append('note', note.trim());
       formData.append('excel', fileList[0].originFileObj);
       
-      await api.post('/commesse/import-excel', formData, { 
+      await api.post('/api/commesse/import-excel', formData, { 
         headers: { 'Content-Type': 'multipart/form-data' } 
       });
       
@@ -151,7 +152,7 @@ export default function Commesse() {
       ...(col.filtered ? {
         filterSearch: true,
         onFilter: (value, record) => (record[col.dataIndex] || '').toLowerCase().includes(value.toLowerCase()),
-        filters: Array.from(new Set(commesse.map(c => c[col.dataIndex]).filter(Boolean))).map(val => ({ text: val, value: val })),
+        filters: Array.isArray(commesse) ? Array.from(new Set(commesse.map(c => c[col.dataIndex]).filter(Boolean))).map(val => ({ text: val, value: val })) : [],
       } : {})
     })),
     {
@@ -234,6 +235,8 @@ export default function Commesse() {
     );
   };
 
+  const dataSourceForTable = Array.isArray(commesse) ? commesse : [];
+
   return (
     <div>
       {/* Header Card */}
@@ -251,7 +254,8 @@ export default function Commesse() {
             setAdding(true);
             setEditingKey('new');
             form.resetFields();
-            setCommesse([{ key: 'new', ...columnsDef.reduce((acc, c) => ({ ...acc, [c.dataIndex]: '' }), {}) }, ...commesse]);
+            const currentCommesse = Array.isArray(commesse) ? commesse : [];
+            setCommesse([{ key: 'new', ...columnsDef.reduce((acc, c) => ({ ...acc, [c.dataIndex]: '' }), {}) }, ...currentCommesse]);
           }}
         >
           Crea commessa
@@ -348,7 +352,7 @@ export default function Commesse() {
           <Table
             components={{ body: { cell: EditableCell } }}
             bordered
-            dataSource={commesse}
+            dataSource={dataSourceForTable}
             columns={mergedColumns}
             rowKey={record => record._id || record.key}
             pagination={{ 
