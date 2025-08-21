@@ -55,10 +55,12 @@ app.use('/auth', authRoutes);
 const componentsRouter = require('./routes/components');
 const commesseRouter = require('./routes/commesse');
 const changeStatusRouter = require('./routes/changestatus');
+const statsRouter = require('./routes/stats');
 
 app.use('/components', componentsRouter);
 app.use('/commesse', commesseRouter);
 app.use('/changestatus', changeStatusRouter);
+app.use('/stats', statsRouter);
 
 // Health endpoint (reports basic health)
 app.get('/health', (req, res) => {
