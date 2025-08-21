@@ -3,6 +3,9 @@ component-tracker/backend/node_modules
 component-tracker/backend/upload
 archivio*
 
+# Build artifacts
+**/dist/
+**/build/
 
 # Secrets
 *.env
