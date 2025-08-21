@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { buildAllowedStatuses } = require('../utils/statusUtils');
 
 const ComponentSchema = new mongoose.Schema({
 commessaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Commessa', required: true },
@@ -58,38 +59,17 @@ commessaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Commessa', required: t
   cancellato: { type: Boolean, default: false }
 }, { timestamps: true });
 
-// Funzione per calcolare gli stati consentiti basata sulla logica delle istruzioni
-ComponentSchema.methods.buildAllowedStatuses = function() {
-  const globals = ['1','2','3','5','6'];
-  const treatmentStates = (this.trattamenti || []).flatMap(t =>
-    [`4:${t}:PREP`, `4:${t}:IN`, `4:${t}:ARR`]
-  );
-  return Array.from(new Set([...globals, ...treatmentStates]));
-};
-
-// Funzione per auto-transizione a "Pronto" quando tutti i trattamenti sono ARR
-ComponentSchema.methods.maybeAutoTransitionToReady = function(saveFn) {
-  const tratt = this.trattamenti || [];
-  if (tratt.length === 0) return false;
-  
-  const allArr = tratt.every(t => {
-    // verifica se history contiene un evento che porta il trattamento a ARR
-    return this.history?.some(h => h.to === `4:${t}:ARR`);
-  });
-  
-  if (allArr && this.status !== '5') {
-    this.history = this.history || [];
-    this.history.push({ 
-      from: this.status, 
-      to: '5', 
-      date: new Date(), 
-      note: 'auto: all treatments ARR' 
-    });
-    this.status = '5';
-    if (typeof saveFn === 'function') saveFn(this);
-    return true;
+// Pre-save hook per popolare automaticamente allowedStatuses
+ComponentSchema.pre('save', function(next) {
+  if (this.isModified('trattamenti') || this.isNew) {
+    this.allowedStatuses = buildAllowedStatuses(this);
   }
-  return false;
+  next();
+});
+
+// Funzione per calcolare gli stati consentiti (manteniamo per compatibilità)
+ComponentSchema.methods.buildAllowedStatuses = function() {
+  return buildAllowedStatuses(this);
 };
 
 module.exports = mongoose.model('Component', ComponentSchema);
