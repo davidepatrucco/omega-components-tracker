@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Row, Col, Card, Typography, Statistic, Spin, message } from 'antd';
+import { api } from '../api';
 import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal } from 'antd';
 import BarcodeWithText from '../BarcodeWithText';
 import { api } from '../api';
@@ -35,6 +37,15 @@ export default function Lavorazioni(){
     }
   };
 
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <Spin size="large" />
+        <div style={{ marginTop: 16 }}>Caricamento statistiche...</div>
+      </div>
+    );
+  }
+
   // Filter work-in-progress components (not shipped)
   const workInProgressComponents = components.filter(comp => 
     comp.status !== '5' && comp.status !== '6' && !comp.cancellato
@@ -62,42 +73,49 @@ export default function Lavorazioni(){
     return treatmentsString.split('+').map(t => t.trim()).filter(Boolean);
   };
 
+
   return (
     <div>
       <Card style={{ marginBottom: 16, borderRadius: 10 }}>
-        <Typography.Title level={3} style={{ margin: 0 }}>Dashboard</Typography.Title>
+        <Typography.Title level={3} style={{ margin: 0 }}>Dashboard Lavorazioni</Typography.Title>
         <Typography.Text type="secondary">Qui trovi lo stato delle lavorazioni e le notifiche rapide.</Typography.Text>
       </Card>
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={4}>
           <Card>
-            <Statistic title="Lavorazioni in corso" value={workInProgressComponents.length} />
+            <Statistic title="In lavorazione" value={stats.inLavorazione} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="Commesse aperte" value={commesse.length} />
+            <Statistic title="Commesse aperte" value={stats.commesseAperte} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
+            <Statistic 
+              title="Da verificare" 
+              value={stats.verificato.nonVerificati}
+              suffix={`(${stats.verificato.percentage}%)`}
+            />
+            <Card>
             <Statistic title="Da verificare" value={workInProgressComponents.filter(c => !c.verificato).length} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="In trattamento" value={workInProgressComponents.filter(c => c.status && c.status.startsWith('4:')).length} />
+            <Statistic title="In trattamento" value={stats.inTrattamento} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="Da spedire" value={components.filter(c => c.status === '5').length} />
+            <Statistic title="Da spedire" value={stats.daSpedire} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="Completate oggi" value={components.filter(c => c.status === '6' && new Date(c.updatedAt).toDateString() === new Date().toDateString()).length} />
+            <Statistic title="Spediti oggi" value={stats.speditOggi} />
           </Card>
         </Col>
       </Row>
