@@ -5,6 +5,9 @@ archivio*
 # Build artifacts
 dist/
 
+# Build artifacts
+**/dist/
+**/build/
 
 # Secrets
 *.env
