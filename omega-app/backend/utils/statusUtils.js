@@ -129,10 +129,20 @@ async function processStatusChange(component, newStatus, user = '', note = '', d
   // Salva se è stata fornita una callback
   if (typeof saveCallback === 'function') {
     await saveCallback(component);
+    // Applica auto-transizione solo se salviamo
+    await applyAutoTransition(component, saveCallback);
+  } else {
+    // Se non salviamo, applica solo l'auto-transizione al componente in memoria
+    const transition = maybeAutoTransitionToReady(component);
+    if (transition.shouldTransition) {
+      component.status = transition.newStatus;
+      if (!component.history) {
+        component.history = [];
+      }
+      component.history.push(transition.historyEntry);
+      populateAllowedStatuses(component);
+    }
   }
-  
-  // Applica auto-transizione se necessario
-  await applyAutoTransition(component, saveCallback);
   
   return {
     success: true,

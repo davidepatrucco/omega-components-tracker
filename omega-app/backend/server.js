@@ -59,12 +59,12 @@ const statsRouter = require('./routes/stats');
 const utentiRouter = require('./routes/utenti');
 const notificationsRouter = require('./routes/notifications');
 
-app.use('/components', componentsRouter);
-app.use('/commesse', commesseRouter);
-app.use('/changestatus', changeStatusRouter);
+app.use('/api/components', componentsRouter);
+app.use('/api/commesse', commesseRouter);
+app.use('/api/changestatus', changeStatusRouter);
 app.use('/api/stats', statsRouter);
-app.use('/utenti', utentiRouter);
-app.use('/notifications', notificationsRouter);
+app.use('/api/utenti', utentiRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Health endpoint (reports basic health)
 app.get('/health', (req, res) => {

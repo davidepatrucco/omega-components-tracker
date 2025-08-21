@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Typography, Statistic, Spin, message } from 'antd';
 import { api } from '../api';
 import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal } from 'antd';
 import BarcodeWithText from '../BarcodeWithText';
-import { api } from '../api';
 import { getStatusLabel, getStatusColor, formatStatusDisplay } from '../utils/statusUtils';
 
 const { Title, Text } = Typography;
@@ -11,6 +9,14 @@ const { Title, Text } = Typography;
 export default function Lavorazioni(){
   const [components, setComponents] = useState([]);
   const [commesse, setCommesse] = useState([]);
+  const [stats, setStats] = useState({
+    inLavorazione: 0,
+    commesseAperte: 0,
+    verificato: { nonVerificati: 0, percentage: 0 },
+    inTrattamento: 0,
+    daSpedire: 0,
+    speditOggi: 0
+  });
   const [loading, setLoading] = useState(true);
   const [barcodeModal, setBarcodeModal] = useState({ open: false, value: '' });
 
@@ -22,16 +28,34 @@ export default function Lavorazioni(){
     try {
       setLoading(true);
       
-      // Fetch components and commesse in parallel
-      const [componentsRes, commisseRes] = await Promise.all([
+      // Fetch components, commesse and stats in parallel
+      const [componentsRes, commisseRes, statsRes] = await Promise.all([
         api.get('/components?pageSize=1000'), // Get a large number of components
-        api.get('/commesse')
+        api.get('/commesse'),
+        api.get('/api/stats')
       ]);
       
       setComponents(componentsRes.data.items || []);
       setCommesse(commisseRes.data.items || []);
+      setStats(statsRes.data || {
+        inLavorazione: 0,
+        commesseAperte: 0,
+        verificato: { nonVerificati: 0, percentage: 0 },
+        inTrattamento: 0,
+        daSpedire: 0,
+        speditOggi: 0
+      });
     } catch (error) {
       console.error('Error fetching data:', error);
+      // Set fallback values in case of error
+      setStats({
+        inLavorazione: 0,
+        commesseAperte: 0,
+        verificato: { nonVerificati: 0, percentage: 0 },
+        inTrattamento: 0,
+        daSpedire: 0,
+        speditOggi: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -84,38 +108,36 @@ export default function Lavorazioni(){
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={4}>
           <Card>
-            <Statistic title="In lavorazione" value={stats.inLavorazione} />
+            <Statistic title="In lavorazione" value={stats?.inLavorazione || 0} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="Commesse aperte" value={stats.commesseAperte} />
+            <Statistic title="Commesse aperte" value={stats?.commesseAperte || 0} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
             <Statistic 
               title="Da verificare" 
-              value={stats.verificato.nonVerificati}
-              suffix={`(${stats.verificato.percentage}%)`}
+              value={stats?.verificato?.nonVerificati || 0}
+              suffix={`(${stats?.verificato?.percentage || 0}%)`}
             />
-            <Card>
-            <Statistic title="Da verificare" value={workInProgressComponents.filter(c => !c.verificato).length} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="In trattamento" value={stats.inTrattamento} />
+            <Statistic title="In trattamento" value={stats?.inTrattamento || 0} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="Da spedire" value={stats.daSpedire} />
+            <Statistic title="Da spedire" value={stats?.daSpedire || 0} />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="Spediti oggi" value={stats.speditOggi} />
+            <Statistic title="Spediti oggi" value={stats?.speditOggi || 0} />
           </Card>
         </Col>
       </Row>
