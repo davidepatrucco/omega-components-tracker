@@ -27,10 +27,13 @@ services:
     image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:staging
     container_name: omega_backend
     environment:
-      - MONGO_URI=${MONGO_URI}
+      - MONGO_URI=${MONGO_URI:-mongodb://localhost:27017/omega-staging}
       - AZURE_STORAGE_ACCOUNT=${AZURE_STORAGE_ACCOUNT}
       - AZURE_STORAGE_KEY=${AZURE_STORAGE_KEY}
       - AZURE_FILE_SHARE=${AZURE_FILE_SHARE}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-dev-access-secret}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-dev-refresh-secret}
+      - NODE_ENV=production
       - PORT=4000
       - FRONTEND_ORIGIN_STAGE=https://staging.omega.intellitude.com
     labels:
