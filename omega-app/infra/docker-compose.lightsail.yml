@@ -23,18 +23,6 @@ services:
 
   
 
-  omega_frontend:
-    image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:staging
-    container_name: omega_frontend
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.omega_frontend.rule=Host(`staging.omega.intellitude.com`)"
-      - "traefik.http.routers.omega_frontend.entrypoints=websecure"
-      - "traefik.http.routers.omega_frontend.tls.certresolver=le"
-    expose:
-      - "80"
-    restart: unless-stopped
-
   omega_backend:
     image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:staging
     container_name: omega_backend
@@ -50,10 +38,24 @@ services:
       - "traefik.http.routers.omega_backend.rule=Host(`staging.omega.intellitude.com`) && PathPrefix(`/api`)"
       - "traefik.http.routers.omega_backend.entrypoints=websecure"
       - "traefik.http.routers.omega_backend.tls.certresolver=le"
+      - "traefik.http.routers.omega_backend.priority=100"
       - "traefik.http.middlewares.omega_backend_strip.stripprefix.prefixes=/api"
       - "traefik.http.routers.omega_backend.middlewares=omega_backend_strip"
     expose:
       - "4000"
+    restart: unless-stopped
+
+  omega_frontend:
+    image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:staging
+    container_name: omega_frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.omega_frontend.rule=Host(`staging.omega.intellitude.com`)"
+      - "traefik.http.routers.omega_frontend.entrypoints=websecure"
+      - "traefik.http.routers.omega_frontend.tls.certresolver=le"
+      - "traefik.http.routers.omega_frontend.priority=10"
+    expose:
+      - "80"
     restart: unless-stopped
 
 volumes:
