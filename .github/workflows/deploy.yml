@@ -35,10 +35,13 @@ jobs:
       - name: Set image tag
         id: vars
         run: |
+          # Tag principale per ambiente
           if [ "${GITHUB_REF}" = "refs/heads/staging" ]; then
             echo "TAG=staging" >> $GITHUB_ENV
+            echo "EXTRA_TAG=staging-${GITHUB_SHA::8}" >> $GITHUB_ENV
           else
             echo "TAG=latest" >> $GITHUB_ENV
+            echo "EXTRA_TAG=prod-${GITHUB_SHA::8}" >> $GITHUB_ENV
           fi
 
       # 🔨 Build & Push Backend
@@ -46,20 +49,58 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./omega-app/backend
-          file: ./omega-app/backend/Dockerfile.backend
+          file: ./omega-app/backend/Dockerfile
           push: true
           build-args: |
-            ENV_FILE=${{ github.ref == 'refs/heads/staging' && '.env.staging' || '.env.prod' }}
-          tags: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:${{ env.TAG }}
+            MONGO_URI=${{ github.ref == 'refs/heads/staging' && secrets.MONGO_URI_STAGING || secrets.MONGO_URI_PROD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+            PORT=4000
+          tags: |
+            152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:${{ env.TAG }}
+            152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:${{ env.EXTRA_TAG }}
 
       # 🔨 Build & Push Frontend
       - name: Build & Push frontend
         uses: docker/build-push-action@v5
         with:
           context: ./omega-app/frontend
-          file: ./omega-app/frontend/Dockerfile.frontend
+          file: ./omega-app/frontend/Dockerfile
           push: true
-          tags: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:${{ env.TAG }}
+          tags: |
+            152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:${{ env.TAG }}
+            152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:${{ env.EXTRA_TAG }}
+
+      # 🧹 Cleanup vecchie immagini ECR (mantieni solo ultime 5)
+      - name: Cleanup old ECR images
+        run: |
+          echo "🧹 Pulizia vecchie immagini ECR..."
+          
+          # Cleanup backend images
+          aws ecr list-images \
+            --repository-name omega-components-tracker-backend \
+            --filter tagStatus=UNTAGGED \
+            --query 'imageIds[?imageDigest!=null]' \
+            --output json | \
+          jq '.[] | select(.imageDigest != null) | .imageDigest' | \
+          head -n -5 | \
+          xargs -I {} aws ecr batch-delete-image \
+            --repository-name omega-components-tracker-backend \
+            --image-ids imageDigest={} || true
+          
+          # Cleanup frontend images  
+          aws ecr list-images \
+            --repository-name omega-components-tracker-frontend \
+            --filter tagStatus=UNTAGGED \
+            --query 'imageIds[?imageDigest!=null]' \
+            --output json | \
+          jq '.[] | select(.imageDigest != null) | .imageDigest' | \
+          head -n -5 | \
+          xargs -I {} aws ecr batch-delete-image \
+            --repository-name omega-components-tracker-frontend \
+            --image-ids imageDigest={} || true
+          
+          echo "✅ Cleanup completato"
 
       # 🔑 Setup SSH agent (senza salvare file key)
       - name: Setup SSH

@@ -38,6 +38,11 @@ services:
   omega_backend:
     image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:staging
     container_name: omega_backend
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - PORT=4000
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.omega_backend.rule=Host(`api.tuodominio.com`)"
