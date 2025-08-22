@@ -1,15 +1,21 @@
 const mongoose = require('mongoose');
 
 const NotificationSchema = new mongoose.Schema({
-  // Destinatario della notifica
+  // Destinatario della notifica (può essere null per notifiche generiche basate su profilo)
   userId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
-    required: true 
+    required: false // Cambiato a false per supportare notifiche generiche
   },
   username: { 
     type: String, 
-    required: true 
+    required: false // Cambiato a false per supportare notifiche generiche
+  },
+  
+  // Profilo target per notifiche generiche (UFF, TRATT, ADMIN, etc.)
+  profileTarget: {
+    type: String,
+    required: false // Required quando userId è null
   },
   
   // Contenuto della notifica
@@ -88,15 +94,41 @@ NotificationSchema.statics.createNotification = async function(data) {
 };
 
 // Metodo statico per contare non lette per utente
-NotificationSchema.statics.getUnreadCount = async function(username) {
-  return await this.countDocuments({ 
-    username, 
+NotificationSchema.statics.getUnreadCount = async function(username, userProfile = null) {
+  // Determina quali profili può vedere questo utente
+  let allowedProfiles = [];
+  if (userProfile === 'ADMIN') {
+    allowedProfiles = ['ADMIN', 'UFF', 'TRATT'];
+  } else if (userProfile === 'UFF') {
+    allowedProfiles = ['UFF', 'TRATT'];
+  } else if (userProfile === 'TRATT') {
+    allowedProfiles = ['TRATT'];
+  }
+
+  const query = {
     isRead: false,
-    $or: [
-      { expiresAt: { $exists: false } },
-      { expiresAt: { $gt: new Date() } }
+    $and: [
+      // Filtro scadenza
+      {
+        $or: [
+          { expiresAt: { $exists: false } },
+          { expiresAt: null },
+          { expiresAt: { $gt: new Date() } }
+        ]
+      },
+      // Filtro per utente o profili consentiti
+      {
+        $or: [
+          // Notifiche specifiche per l'utente
+          { username },
+          // Notifiche per i profili che può vedere
+          { profileTarget: { $in: allowedProfiles } }
+        ]
+      }
     ]
-  });
+  };
+
+  return await this.countDocuments(query);
 };
 
 module.exports = mongoose.model('Notification', NotificationSchema);

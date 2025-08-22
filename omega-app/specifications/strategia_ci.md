@@ -150,7 +150,7 @@ Esempio pratico (snippet GitHub Actions - build-time)
 4. Se OK → notifica e chiudi release; se KO → rollback automatico e alert
 
 ## Criteri di accettazione
- - Deploy su staging automatico entro 5 minuti dal merge su `staging`.
+- Deploy su staging automatico entro 5 minuti dal merge su `staging`.
 - Deploy in produzione eseguito solo con approvazione e backup pre-deploy.
 - Possibilità di rollback applicativo automatizzato in < 10 minuti.
 - A) file example GitHub Actions: `ci.yml`, `build_publish.yml`, `deploy_staging.yml`, `deploy_prod.yml`.
@@ -228,5 +228,24 @@ chmod 600 ~/.ssh/authorized_keys
 - Crea gli Environments `staging` e `production` e sposta i secrets sensibili lì. Abilita required reviewers per `production` per richiedere approvazione sul deploy.
 
 Esempio rapido: aggiungi questi secrets e poi fai un push su `main` per attivare la job `deploy.yml`.
+
+## Riferimenti utili e script di deploy
+
+I file helper e i template di deploy si trovano in `omega-app/infra/`:
+- `omega-app/infra/deploy.sh` — helper eseguibile per eseguire `docker compose -f docker-compose.lightsail.yml up -d` sul server
+- `omega-app/infra/backup.sh` — helper per eseguire backup (mongodump + archiviazione volumi)
+- `omega-app/Dockerfile.lightsail` — Dockerfile template per build in produzione
+
+Nota: il workflow di deploy esegue `chmod +x` su `infra/deploy.sh` e `infra/backup.sh` dopo l'estrazione del bundle sul server; assicurati che l'utente di deploy abbia i permessi corretti per eseguirli (o esegui `chmod +x` manualmente sul server).
+
+Secrets rilevanti per il deploy via SSH:
+- `SSH_HOST`, `SSH_USER`, `SSH_KEY` (chiave privata), `API_PROD_URL`/`API_STAGE_URL`, `MONGO_URI_PROD`, `MONGO_URI_STAGE`.
+
+Esempio rapido per rendere eseguibili gli script direttamente sul server (se necessario):
+
+```bash
+# sul server, nella cartella dove hai estratto il bundle
+chmod +x infra/deploy.sh infra/backup.sh
+```
 
 

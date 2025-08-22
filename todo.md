@@ -1,0 +1,2 @@
+- ✅ nella pagina Lavorazioni, quando cambio stato o validazione, devo rinfrescare /stats (già implementato)
+- ✅ su staging, se sono su https://staging.omega.intellitude.com/login e faccio refresh --> error 404. La stessa cosa NON accade su localhost:5173/login, se faccio refresh funziona (fix: nginx.conf per SPA routing)
