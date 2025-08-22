@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: '', // Use relative URLs since we have Vite proxy
+  baseURL: import.meta.env.VITE_API_URL || '', // Use VITE_API_URL for production, fallback to relative URLs for development
   withCredentials: true, // Include cookies for authentication
 });
 
