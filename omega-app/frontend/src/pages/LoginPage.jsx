@@ -59,7 +59,7 @@ export default function LoginPage(){
               <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#4f46e5,#06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 18, boxShadow: '0 8px 24px rgba(79,70,229,0.12)' }}>Ω</div>
             </div>
             <Title level={3} style={{ margin: 0 }}>Benvenuto</Title>
-            <Text type="secondary">Accedi al pannello di controllo</Text>
+            <Text type="secondary">Accedi all'applicazione!</Text>
           </div>
 
           <Form name="login" onFinish={onFinish} layout="vertical">

@@ -13,7 +13,7 @@ router.get('/', requireAuth, async (req, res) => {
   const commessaId = req.query.commessaId;
   const filter = { cancellato: { $ne: true } };
   if (commessaId) filter.commessaId = commessaId;
-  if (q) filter.name = { $regex: q, $options: 'i' };
+  if (q) filter.descrizioneComponente = { $regex: q, $options: 'i' };
   const total = await Component.countDocuments(filter);
   const items = await Component.find(filter).skip((page-1)*pageSize).limit(pageSize).lean();
   res.json({ items, total });

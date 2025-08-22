@@ -84,7 +84,7 @@ test('components pagination and filtering', async () => {
   expect(secondPage.body.items.length).toBe(5);
 
   // filter by q
-  const qRes = await request(app).get('/components').set('Authorization', `Bearer ${token}`).query({ q: 'comp1' }).expect(200);
+  const qRes = await request(app).get('/api/components').set('Authorization', `Bearer ${token}`).query({ q: 'comp1' }).expect(200);
   // should match comp1, comp10..comp19 => at least 2
   expect(qRes.body.total).toBeGreaterThanOrEqual(2);
 });

@@ -57,6 +57,6 @@ test('create commessa, create component, list components, update component, chan
 
   // change status
   const ch = await request(app).post('/api/changestatus').set('Authorization', `Bearer ${token}`).send({ componentId: comp._id, to: '2', note: 'ok' }).expect(200);
-  expect(ch.body.status).toBe('2');
-  expect(Array.isArray(ch.body.history)).toBe(true);
+  expect(ch.body.component.status).toBe('2');
+  expect(Array.isArray(ch.body.component.history)).toBe(true);
 });
