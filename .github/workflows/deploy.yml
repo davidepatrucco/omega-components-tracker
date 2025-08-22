@@ -52,9 +52,10 @@ jobs:
           file: ./omega-app/backend/Dockerfile
           push: true
           build-args: |
-            MONGO_URI=${{ github.ref == 'refs/heads/staging' && secrets.MONGO_URI_STAGING || secrets.MONGO_URI_PROD }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+            MONGO_URI=${{ github.ref == 'refs/heads/staging' && secrets.MONGO_URI_STAGE || secrets.MONGO_URI_PROD }}
+            AZURE_STORAGE_ACCOUNT=${{ github.ref == 'refs/heads/staging' && secrets.AZURE_STORAGE_ACCOUNT_STAGE || secrets.AZURE_STORAGE_ACCOUNT }}
+            AZURE_STORAGE_KEY=${{ github.ref == 'refs/heads/staging' && secrets.AZURE_STORAGE_KEY_STAGE || secrets.AZURE_STORAGE_KEY }}
+            AZURE_FILE_SHARE=${{ github.ref == 'refs/heads/staging' && secrets.AZURE_FILE_SHARE_STAGE || secrets.AZURE_FILE_SHARE }}
             PORT=4000
           tags: |
             152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:${{ env.TAG }}
