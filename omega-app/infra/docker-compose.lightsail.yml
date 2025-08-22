@@ -47,9 +47,11 @@ services:
       - FRONTEND_ORIGIN_STAGE=https://staging.omega.intellitude.com
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.omega_backend.rule=Host(`api.staging.omega.intellitude.com`)"
+      - "traefik.http.routers.omega_backend.rule=Host(`staging.omega.intellitude.com`) && PathPrefix(`/api`)"
       - "traefik.http.routers.omega_backend.entrypoints=websecure"
       - "traefik.http.routers.omega_backend.tls.certresolver=le"
+      - "traefik.http.middlewares.omega_backend_strip.stripprefix.prefixes=/api"
+      - "traefik.http.routers.omega_backend.middlewares=omega_backend_strip"
     expose:
       - "4000"
     restart: unless-stopped
