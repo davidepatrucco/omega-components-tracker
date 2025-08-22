@@ -11,9 +11,19 @@ router.get('/', requireAuth, async (req, res) => {
     const username = req.user.username;
     const userProfile = req.user.profilo;
     
-    // Costruisci query base per includere:
+    // Determina quali profili può vedere questo utente
+    let allowedProfiles = [];
+    if (userProfile === 'ADMIN') {
+      allowedProfiles = ['ADMIN', 'UFF', 'TRATT'];
+    } else if (userProfile === 'UFF') {
+      allowedProfiles = ['UFF', 'TRATT'];
+    } else if (userProfile === 'TRATT') {
+      allowedProfiles = ['TRATT'];
+    }
+
+    // Query per filtrare le notifiche:
     // 1. Notifiche specifiche per questo utente (username match)
-    // 2. Notifiche generiche per il profilo dell'utente (profileTarget match)
+    // 2. Notifiche per i profili che questo utente può vedere
     const query = { 
       $and: [
         // Filtro scadenza sempre applicato
@@ -24,19 +34,17 @@ router.get('/', requireAuth, async (req, res) => {
             { expiresAt: { $gt: new Date() } }
           ]
         },
-        // Filtro per utente o profilo
+        // Filtro per utente o profili consentiti
         {
           $or: [
             // Notifiche specifiche per l'utente
             { username },
-            // Notifiche generiche per il profilo dell'utente
-            { profileTarget: userProfile }
+            // Notifiche per i profili che può vedere
+            { profileTarget: { $in: allowedProfiles } }
           ]
         }
       ]
-    };
-    
-    // Filtra solo non lette se richiesto
+    };    // Filtra solo non lette se richiesto
     if (unreadOnly === 'true') {
       query.$and.push({ isRead: false });
     }
