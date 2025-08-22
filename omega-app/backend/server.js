@@ -64,6 +64,42 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// System info endpoint (shows environment and configuration details)
+app.get('/api/system-info', (req, res) => {
+  // Determine environment based on NODE_ENV or MONGO_URI
+  let environment = 'DEVELOPMENT';
+  const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/omega';
+  
+  if (mongoUri.includes('omega-staging')) {
+    environment = 'STAGING';
+  } else if (mongoUri.includes('omega-prod') || mongoUri.includes('production')) {
+    environment = 'PRODUCTION';
+  } else if (mongoUri.includes('localhost')) {
+    environment = 'DEVELOPMENT';
+  }
+  
+  // Clean MONGO_URI (remove credentials)
+  let cleanMongoUri = mongoUri;
+  if (mongoUri.includes('://')) {
+    const parts = mongoUri.split('://');
+    const protocol = parts[0];
+    const rest = parts[1];
+    
+    if (rest.includes('@')) {
+      const afterCredentials = rest.split('@')[1];
+      cleanMongoUri = `${protocol}://${afterCredentials}`;
+    }
+  }
+  
+  res.json({
+    environment,
+    serverIP: req.hostname || req.ip || 'unknown',
+    mongoUri: cleanMongoUri,
+    port: PORT,
+    nodeEnv: process.env.NODE_ENV || 'not set'
+  });
+});
+
 const MONGO = process.env.MONGO_URI || 'mongodb://localhost:27017/omega';
 
 async function start() {

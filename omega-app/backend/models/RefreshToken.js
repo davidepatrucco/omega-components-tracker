@@ -9,4 +9,11 @@ const RefreshTokenSchema = new mongoose.Schema({
   replacedBy: { type: String },
   lastUsedAt: { type: Date }
 });
+
+// Indici per performance
+RefreshTokenSchema.index({ user: 1 });
+RefreshTokenSchema.index({ expiresAt: 1 });
+RefreshTokenSchema.index({ revoked: 1 });
+RefreshTokenSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('RefreshToken', RefreshTokenSchema);

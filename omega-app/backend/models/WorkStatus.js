@@ -7,4 +7,10 @@ const WorkStatusSchema = new mongoose.Schema({
   profili: { type: [String], default: [] },
   note: { type: String, default: '' }
 });
+
+// Indici per performance
+WorkStatusSchema.index({ order: 1 });
+WorkStatusSchema.index({ active: 1 });
+WorkStatusSchema.index({ profili: 1 });
+
 module.exports = mongoose.model('WorkStatus', WorkStatusSchema);

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Card, message, Typography, Space } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Button, Card, message, Typography, Space, Divider, Tag } from 'antd';
+import { UserOutlined, LockOutlined, CloudServerOutlined, DatabaseOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -9,8 +9,24 @@ const { Title, Text } = Typography;
 
 export default function LoginPage(){
   const [loading, setLoading] = useState(false);
+  const [systemInfo, setSystemInfo] = useState(null);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Fetch system info on component mount
+  useEffect(() => {
+    const fetchSystemInfo = async () => {
+      try {
+        const response = await api.get('/api/system-info');
+        setSystemInfo(response.data);
+      } catch (error) {
+        console.error('Failed to fetch system info:', error);
+        // Don't show error to user, just log it
+      }
+    };
+    
+    fetchSystemInfo();
+  }, []);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -23,6 +39,15 @@ export default function LoginPage(){
     } catch (err) {
       message.error(err?.response?.data?.error || 'Credenziali errate');
     } finally { setLoading(false); }
+  };
+
+  const getEnvironmentColor = (env) => {
+    switch (env) {
+      case 'PRODUCTION': return 'red';
+      case 'STAGING': return 'orange';
+      case 'DEVELOPMENT': return 'green';
+      default: return 'default';
+    }
   };
 
   return (
@@ -56,6 +81,47 @@ export default function LoginPage(){
           <div style={{ textAlign: 'center' }}>
             <Text type="secondary">Inserisci user e password o contatta l'amministratore se non le possiedi</Text>
           </div>
+
+          {systemInfo && (
+            <>
+              <Divider style={{ margin: '16px 0' }} />
+              <div style={{ background: '#fafafa', padding: '12px', borderRadius: '6px', border: '1px solid #f0f0f0' }}>
+                <Typography.Title level={5} style={{ margin: '0 0 8px 0', color: '#666' }}>
+                  <CloudServerOutlined style={{ marginRight: 6 }} />
+                  Parametri Sistema
+                </Typography.Title>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      <EnvironmentOutlined style={{ marginRight: 4 }} />
+                      Ambiente:
+                    </Text>
+                    <Tag color={getEnvironmentColor(systemInfo.environment)} style={{ fontSize: '11px', margin: 0 }}>
+                      {systemInfo.environment}
+                    </Tag>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      <CloudServerOutlined style={{ marginRight: 4 }} />
+                      Server IP:
+                    </Text>
+                    <Text style={{ fontSize: '11px', fontFamily: 'monospace' }}>
+                      {systemInfo.serverIP}
+                    </Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      <DatabaseOutlined style={{ marginRight: 4 }} />
+                      MongoDB:
+                    </Text>
+                    <Text style={{ fontSize: '11px', fontFamily: 'monospace', maxWidth: '200px', wordBreak: 'break-all' }}>
+                      {systemInfo.mongoUri}
+                    </Text>
+                  </div>
+                </Space>
+              </div>
+            </>
+          )}
         </Space>
       </Card>
     </div>

@@ -5,4 +5,9 @@ const CommessaSchema = new mongoose.Schema({
   notes: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
+
+// Indici per performance
+CommessaSchema.index({ createdAt: -1 });
+CommessaSchema.index({ name: "text" }); // per ricerca testuale
+
 module.exports = mongoose.model('Commessa', CommessaSchema);
