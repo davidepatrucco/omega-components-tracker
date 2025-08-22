@@ -77,6 +77,11 @@ router.put('/:id', requireAuth, async (req, res) => {
     console.log(`[PUT /components/${req.params.id}] Request body:`, JSON.stringify(req.body, null, 2));
     console.log(`[PUT /components/${req.params.id}] User:`, req.user?.username);
     
+    // Validate ObjectId format
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'Invalid component ID format' });
+    }
+    
     const component = await Component.findById(req.params.id);
     if (!component) {
       console.log(`[PUT /components/${req.params.id}] Component not found`);
