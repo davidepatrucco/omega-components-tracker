@@ -16,11 +16,16 @@ ENV AZURE_STORAGE_KEY=${AZURE_STORAGE_KEY}
 ENV AZURE_FILE_SHARE=${AZURE_FILE_SHARE}
 
 WORKDIR /app
-COPY package*.json ./
+
+# Copy package files from backend directory
+COPY backend/package*.json ./
 RUN npm install --production
 
-# Copy application files
-COPY . .
+# Copy backend application files
+COPY backend/ ./
+
+# Make shared directory available at the expected path
+COPY shared/ ../shared/
 
 EXPOSE 4000
 CMD ["npm", "start"]
