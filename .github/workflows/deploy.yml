@@ -14,7 +14,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -205,5 +205,5 @@ jobs:
             fi
 
             echo '[REMOTE] Stato container:'
-            docker ps -a
+            sudo docker ps -a
             echo '[REMOTE] Fine deploy.'\""
