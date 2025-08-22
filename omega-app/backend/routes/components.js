@@ -17,7 +17,7 @@ router.get('/', requireAuth, async (req, res) => {
   if (commessaId) filter.commessaId = commessaId;
   if (q) filter.name = { $regex: q, $options: 'i' };
   if (barcode) filter.barcode = barcode;
-  
+  if (q) filter.descrizioneComponente = { $regex: q, $options: 'i' };
   const total = await Component.countDocuments(filter);
   const items = await Component.find(filter).skip((page-1)*pageSize).limit(pageSize).lean();
   res.json({ items, total });
@@ -50,9 +50,9 @@ router.get('/:id', requireAuth, async (req, res) => {
 // POST /components - create new component
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { commessaId, name } = req.body;
-    if (!commessaId || !name) {
-      return res.status(400).json({ error: 'commessaId and name required' });
+    const { commessaId } = req.body;
+    if (!commessaId) {
+      return res.status(400).json({ error: 'commessaId required' });
     }
     
     // Validate commessa exists
@@ -61,7 +61,8 @@ router.post('/', requireAuth, async (req, res) => {
     
     const componentData = { 
       ...req.body,
-      commessaName: comm.name
+      commessaName: comm.name,
+      commessaCode: comm.code
     };
     
     // Usa la configurazione centralizzata per calcolare allowedStatuses
@@ -80,6 +81,11 @@ router.put('/:id', requireAuth, async (req, res) => {
   try {
     console.log(`[PUT /components/${req.params.id}] Request body:`, JSON.stringify(req.body, null, 2));
     console.log(`[PUT /components/${req.params.id}] User:`, req.user?.username);
+    
+    // Validate ObjectId format
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'Invalid component ID format' });
+    }
     
     const component = await Component.findById(req.params.id);
     if (!component) {
