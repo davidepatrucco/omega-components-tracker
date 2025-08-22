@@ -46,36 +46,64 @@ function requireAzureConfig(req, res, next) {
   next();
 }
 
-// GET /files - list all files
+// GET /files - list files and directories in specified path (or root)
 router.get('/', requireAuth, requireAzureConfig, async (req, res) => {
   try {
-    const files = [];
-    for await (const item of rootDir.listFilesAndDirectories()) {
+    const currentPath = req.query.path || '';
+    const directoryClient = currentPath ? shareClient.getDirectoryClient(currentPath) : rootDir;
+    
+    const items = [];
+    
+    for await (const item of directoryClient.listFilesAndDirectories()) {
+      const itemPath = currentPath ? `${currentPath}/${item.name}` : item.name;
+      
       if (item.kind === "file") {
-        files.push({
+        items.push({
           name: item.name,
+          fullPath: itemPath,
+          type: 'file',
           size: item.properties?.contentLength || 0,
+          lastModified: item.properties?.lastModified || null
+        });
+      } else if (item.kind === "directory") {
+        items.push({
+          name: item.name,
+          fullPath: itemPath,
+          type: 'directory',
+          size: null,
           lastModified: item.properties?.lastModified || null
         });
       }
     }
-    res.json(files);
+    
+    // Sort: directories first, then files, both alphabetically
+    items.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'directory' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    
+    res.json({
+      currentPath,
+      items,
+      breadcrumbs: currentPath ? currentPath.split('/') : []
+    });
   } catch (err) {
     console.error('Error listing files:', err);
     if (err.code === 'ShareNotFound') {
-      // Return empty array if share doesn't exist instead of error
       console.log('Azure File Share not found, returning empty file list');
-      return res.json([]);
+      return res.json({ currentPath: '', items: [], breadcrumbs: [] });
     }
     res.status(500).json({ error: 'Errore nel recupero files' });
   }
 });
 
-// GET /files/:name - download/view a specific file
-router.get('/:name', requireAuth, requireAzureConfig, async (req, res) => {
+// GET /files/:name - download/view a specific file (supports subdirectories)
+router.get('/:name(*)', requireAuth, requireAzureConfig, async (req, res) => {
   try {
-    const fileName = req.params.name;
-    const fileClient = rootDir.getFileClient(fileName);
+    const filePath = req.params.name;
+    const fileClient = shareClient.getFileClient(filePath);
     
     // Check if file exists
     const exists = await fileClient.exists();
@@ -84,6 +112,9 @@ router.get('/:name', requireAuth, requireAzureConfig, async (req, res) => {
     }
 
     const download = await fileClient.download();
+    
+    // Extract just the filename for the download header
+    const fileName = filePath.split('/').pop();
     
     // Set appropriate headers
     res.setHeader('Content-Type', 'application/octet-stream');
