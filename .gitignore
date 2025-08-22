@@ -2,6 +2,11 @@ node_modules
 component-tracker/backend/node_modules
 component-tracker/backend/upload
 archivio*
+
+# Log files
+launch.log
+*.log
+
 # Build artifacts
 dist/
 
