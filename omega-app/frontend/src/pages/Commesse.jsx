@@ -149,7 +149,7 @@ export default function Commesse() {
     {
       title: '',
       key: 'detail',
-      width: 50,
+      width: 20,
       render: (_, record) => {
         if (isEditing(record)) return null;
         return (
@@ -181,34 +181,40 @@ export default function Commesse() {
     {
       title: 'Azioni',
       key: 'actions',
-      width: 120,
+      width: 10,
       render: (_, record) => {
         const editable = isEditing(record);
-        return editable ? (
-          <Space>
+        return (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 90 }}>
+            {editable ? (
+              <Space>
             <Tooltip title="Salva">
               <Button icon={<SaveOutlined />} type="primary" shape="circle" size="small" onClick={() => save(record._id)} />
             </Tooltip>
             <Tooltip title="Annulla">
               <Button icon={<CloseOutlined />} shape="circle" size="small" onClick={cancel} />
             </Tooltip>
-          </Space>
-        ) : (
-          <Space>
-            <Tooltip title="Modifica">
-              <Button icon={<EditOutlined />} shape="circle" size="small" onClick={e => { e.stopPropagation(); edit(record); }} />
-            </Tooltip>
-            <Popconfirm 
-              title="Eliminare la commessa?" 
-              onConfirm={e => { e?.stopPropagation(); handleDelete(record._id); }} 
-              onCancel={e => { e?.stopPropagation(); }}
-              okText="Sì" cancelText="No"
-            >
-              <Tooltip title="Elimina">
-                <Button icon={<DeleteOutlined />} danger shape="circle" size="small" onClick={e => e.stopPropagation()} />
-              </Tooltip>
-            </Popconfirm>
-          </Space>
+              </Space>
+            ) : (
+            <Space>
+              <>
+                <Tooltip title="Modifica">
+                  <Button icon={<EditOutlined />} shape="circle" size="small" onClick={e => { e.stopPropagation(); edit(record); }} />
+                </Tooltip>
+                <Popconfirm 
+                  title="Eliminare la commessa?" 
+                  onConfirm={e => { e?.stopPropagation(); handleDelete(record._id); }} 
+                  onCancel={e => { e?.stopPropagation(); }}
+                  okText="Sì" cancelText="No"
+                >
+                  <Tooltip title="Elimina">
+                    <Button icon={<DeleteOutlined />} danger shape="circle" size="small" onClick={e => e.stopPropagation()} />
+                  </Tooltip>
+                </Popconfirm>
+              </>
+            </Space>
+            )}
+          </div>
         );
       }
     }

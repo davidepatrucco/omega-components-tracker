@@ -1,16 +1,7 @@
-// load env: prefer project-level omega.env (repo root) then backend/.env
-const path = require('path');
-const fs = require('fs');
+// load env from backend/.env
 const dotenv = require('dotenv');
-const repoRootEnv = path.resolve(__dirname, '..', '..', '.env');
-if (fs.existsSync(repoRootEnv)) {
-  dotenv.config({ path: repoRootEnv });
-  console.log('Loaded env from repo root .env:', repoRootEnv);
-} else {
-  // fallback to default .env in backend folder
-  dotenv.config();
-  console.log('Loaded env from backend .env (if present)');
-}
+dotenv.config();
+console.log('Loaded env from backend .env');
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');

@@ -388,9 +388,6 @@ export default function Lavorazioni(){
       {/* Work in Progress Components Section */}
       <Card style={{ borderRadius: 10 }}>
         <Title level={4} style={{ marginBottom: 16 }}>Lavorazioni in Corso</Title>
-        <Text type="secondary" style={{ display: 'block', marginBottom: 20 }}>
-          Componenti che sono ancora in stato non spedito
-        </Text>
         
         {/* Filtri e Ordinamento */}
         <Card 
