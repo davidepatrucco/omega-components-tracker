@@ -46,9 +46,9 @@ router.get('/:id', requireAuth, async (req, res) => {
 // POST /components - create new component
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { commessaId, name } = req.body;
-    if (!commessaId || !name) {
-      return res.status(400).json({ error: 'commessaId and name required' });
+    const { commessaId } = req.body;
+    if (!commessaId) {
+      return res.status(400).json({ error: 'commessaId required' });
     }
     
     // Validate commessa exists
@@ -57,7 +57,8 @@ router.post('/', requireAuth, async (req, res) => {
     
     const componentData = { 
       ...req.body,
-      commessaName: comm.name
+      commessaName: comm.name,
+      commessaCode: comm.code
     };
     
     // Usa la configurazione centralizzata per calcolare allowedStatuses
