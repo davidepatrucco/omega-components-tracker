@@ -69,7 +69,7 @@ test('components pagination and filtering', async () => {
   // create 30 components
   const createPromises = [];
   for (let i = 0; i < 30; i++) {
-  createPromises.push(request(app).post('/api/components').set('Authorization', `Bearer ${token}`).send({ commessaId, name: `comp${i}`, barcode: `B${i}`, status: '1' }));
+  createPromises.push(request(app).post('/api/components').set('Authorization', `Bearer ${token}`).send({ commessaId, descrizioneComponente: `comp${i}`, barcode: `B${i}`, status: '1' }));
   }
   const results = await Promise.all(createPromises);
   expect(results.every(r => r.status === 201)).toBe(true);
@@ -97,7 +97,7 @@ test('POST /components without commessaId returns 400', async () => {
   await User.create({ username: 'admin', password: hash, profilo: 'ADMIN' });
   const login = await request(app).post('/auth/login').send({ username: 'admin', password: 'changeme' }).expect(200);
   const token = login.body.accessToken;
-  await request(app).post('/api/components').set('Authorization', `Bearer ${token}`).send({ name: 'NoComm' }).expect(400);
+  await request(app).post('/api/components').set('Authorization', `Bearer ${token}`).send({ descrizioneComponente: 'NoComm' }).expect(400);
 });
 
 test('PUT /components/:id with invalid id returns 400', async () => {
@@ -108,7 +108,7 @@ test('PUT /components/:id with invalid id returns 400', async () => {
   await User.create({ username: 'admin', password: hash, profilo: 'ADMIN' });
   const login = await request(app).post('/auth/login').send({ username: 'admin', password: 'changeme' }).expect(200);
   const token = login.body.accessToken;
-  await request(app).put('/api/components/invalid-id').set('Authorization', `Bearer ${token}`).send({ name: 'x' }).expect(400);
+  await request(app).put('/api/components/invalid-id').set('Authorization', `Bearer ${token}`).send({ descrizioneComponente: 'x' }).expect(400);
 });
 
 test('changestatus validation and non-existent component', async () => {
