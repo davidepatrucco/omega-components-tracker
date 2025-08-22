@@ -23,8 +23,6 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "❌ Working tree not clean"; exit 1
 fi
 
-git add . 
-git commit -m "automatic deploy to stage"
 
 
 if [[ "$TARGET" == "staging" ]]; then
