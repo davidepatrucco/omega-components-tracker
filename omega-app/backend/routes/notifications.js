@@ -9,19 +9,36 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const { page = 1, limit = 20, unreadOnly = false } = req.query;
     const username = req.user.username;
+    const userProfile = req.user.profilo;
     
-    // Costruisci query base
+    // Costruisci query base per includere:
+    // 1. Notifiche specifiche per questo utente (username match)
+    // 2. Notifiche generiche per il profilo dell'utente (profileTarget match)
     const query = { 
-      username,
-      $or: [
-        { expiresAt: { $exists: false } },
-        { expiresAt: { $gt: new Date() } }
+      $and: [
+        // Filtro scadenza sempre applicato
+        {
+          $or: [
+            { expiresAt: { $exists: false } },
+            { expiresAt: null },
+            { expiresAt: { $gt: new Date() } }
+          ]
+        },
+        // Filtro per utente o profilo
+        {
+          $or: [
+            // Notifiche specifiche per l'utente
+            { username },
+            // Notifiche generiche per il profilo dell'utente
+            { profileTarget: userProfile }
+          ]
+        }
       ]
     };
     
     // Filtra solo non lette se richiesto
     if (unreadOnly === 'true') {
-      query.isRead = false;
+      query.$and.push({ isRead: false });
     }
     
     // Paginazione
@@ -34,7 +51,7 @@ router.get('/', requireAuth, async (req, res) => {
       .populate('relatedEntity.id', 'name code');
     
     const total = await Notification.countDocuments(query);
-    const unreadCount = await Notification.getUnreadCount(username);
+    const unreadCount = await Notification.getUnreadCount(username, userProfile);
     
     res.json({
       notifications,
@@ -56,7 +73,8 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/unread-count', requireAuth, async (req, res) => {
   try {
     const username = req.user.username;
-    const count = await Notification.getUnreadCount(username);
+    const userProfile = req.user.profilo;
+    const count = await Notification.getUnreadCount(username, userProfile);
     res.json({ count });
   } catch (error) {
     console.error('Error counting unread notifications:', error);

@@ -1,0 +1,42 @@
+🔄 Stopping existing processes...
+Killing server.js processes on port 4000...
+Killing vite processes on ports 5173 and 5174...
+🚀 Starting backend...
+Backend started with PID: 9746
+Loaded env from backend .env
+Azure File Share client initialized successfully
+Connected to MongoDB: mongodb+srv://omega-dev:pkkNBZtd1gAmShgp@bifadevelopment.hmkg9f4.mongodb.net/omega-dev
+Default user exists
+backend listening on 4000
+🚀 Starting frontend...
+Frontend started with PID: 9800
+✅ All services started!
+Backend: http://localhost:4000
+Frontend: http://localhost:5173
+
+To stop everything, run: kill 9746 9800
+Or use Ctrl+C to stop this script and all child processes
+
+> omega-frontend@0.1.0 dev
+> vite
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vitejs.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+  VITE v5.1.5  ready in 226 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+[PUT /components/68a6e0f139c578d27b09a734] Request body: {
+  "verificato": true
+}
+[PUT /components/68a6e0f139c578d27b09a734] User: ufficio
+[PUT /components/68a6e0f139c578d27b09a734] Current component version: 2
+[PUT /components/68a6e0f139c578d27b09a734] Current status: 6
+[PUT /components/68a6e0f139c578d27b09a734] Update data after status change: { verificato: true }
+[PUT /components/68a6e0f139c578d27b09a734] Saving attempt 1, version: 2
+[PUT /components/68a6e0f139c578d27b09a734] Save successful, new version: 2
+[PUT /components/68a6e0f139c578d27b09a734] Sending response
+3:25:04 PM [vite] page reload src/pages/LoginPage.jsx
+3:25:34 PM [vite] page reload src/pages/LoginPage.jsx
+./launchall.sh: line 38:  9746 Hangup: 1               node server.js  (wd: ~/Desktop/Personal/omega/omega-app/backend)
+./launchall.sh: line 38:  9800 Hangup: 1               npm run dev
