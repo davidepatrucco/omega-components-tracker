@@ -40,8 +40,9 @@ services:
     container_name: omega_backend
     environment:
       - MONGO_URI=${MONGO_URI}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - AZURE_STORAGE_ACCOUNT=${AZURE_STORAGE_ACCOUNT}
+      - AZURE_STORAGE_KEY=${AZURE_STORAGE_KEY}
+      - AZURE_FILE_SHARE=${AZURE_FILE_SHARE}
       - PORT=4000
     labels:
       - "traefik.enable=true"
