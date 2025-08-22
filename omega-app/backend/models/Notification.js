@@ -95,6 +95,16 @@ NotificationSchema.statics.createNotification = async function(data) {
 
 // Metodo statico per contare non lette per utente
 NotificationSchema.statics.getUnreadCount = async function(username, userProfile = null) {
+  // Determina quali profili può vedere questo utente
+  let allowedProfiles = [];
+  if (userProfile === 'ADMIN') {
+    allowedProfiles = ['ADMIN', 'UFF', 'TRATT'];
+  } else if (userProfile === 'UFF') {
+    allowedProfiles = ['UFF', 'TRATT'];
+  } else if (userProfile === 'TRATT') {
+    allowedProfiles = ['TRATT'];
+  }
+
   const query = {
     isRead: false,
     $and: [
@@ -106,13 +116,13 @@ NotificationSchema.statics.getUnreadCount = async function(username, userProfile
           { expiresAt: { $gt: new Date() } }
         ]
       },
-      // Filtro per utente o profilo
+      // Filtro per utente o profili consentiti
       {
         $or: [
           // Notifiche specifiche per l'utente
           { username },
-          // Notifiche generiche per il profilo (se fornito)
-          ...(userProfile ? [{ profileTarget: userProfile }] : [])
+          // Notifiche per i profili che può vedere
+          { profileTarget: { $in: allowedProfiles } }
         ]
       }
     ]
