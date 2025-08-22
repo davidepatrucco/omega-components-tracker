@@ -23,6 +23,8 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "❌ Working tree not clean"; exit 1
 fi
 
+
+
 if [[ "$TARGET" == "staging" ]]; then
   git checkout "$BR_STAGING"
   git fetch "$REMOTE" "$BR_STAGING"
