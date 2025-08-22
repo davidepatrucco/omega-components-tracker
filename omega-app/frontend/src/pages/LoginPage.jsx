@@ -54,7 +54,7 @@ export default function LoginPage(){
           </Form>
 
           <div style={{ textAlign: 'center' }}>
-            <Text type="secondary">Credenziali demo — user: d  password: d</Text>
+            <Text type="secondary">Inserisci user e password o contatta l'amministratore se non le possiedi</Text>
           </div>
         </Space>
       </Card>
