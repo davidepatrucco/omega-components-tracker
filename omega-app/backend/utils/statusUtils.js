@@ -4,16 +4,20 @@
  */
 
 const {
-  getStatusLabel,
-  parseTreatmentStatus,
-  buildAllowedStatuses,
+  isValidStatus,
+  getAllowedStatusTransitions,
+  BASE_STATUSES: { DISPONIBILE, IN_LAVORAZIONE, PRONTO },
+  TREATMENT_PHASES,
+  isStatusInPhase,
   areAllTreatmentsCompleted,
   maybeAutoTransitionToReady,
   getStatusOrder,
   BASE_STATUSES,
-  TREATMENT_PHASES,
-  createTreatmentStatus
-} = require('../shared/statusConfig.js');
+  createTreatmentStatus,
+  getStatusLabel,
+  parseTreatmentStatus,
+  buildAllowedStatuses
+} = require('../../shared/statusConfig.js');
 
 const { createStatusChangeNotification } = require('./notificationUtils');
 

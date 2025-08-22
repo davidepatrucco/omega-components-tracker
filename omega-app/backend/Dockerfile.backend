@@ -1,9 +1,18 @@
-# Node.js backend Dockerfile
+# Minimal Node.js backend Dockerfile
 FROM node:20-alpine
+
+# Accept build argument for environment file
+ARG ENV_FILE=.env
+
 WORKDIR /app
 COPY package*.json ./
-ARG BUILD_ENV=development
-RUN if [ "$BUILD_ENV" = "production" ]; then npm install --production; else npm install; fi
+RUN npm install --production
+
+# Copy application files
 COPY . .
+
+# Copy the correct environment file as .env
+COPY ${ENV_FILE} .env
+
 EXPOSE 4000
 CMD ["npm", "start"]
