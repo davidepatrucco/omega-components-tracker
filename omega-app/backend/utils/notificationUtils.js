@@ -27,22 +27,15 @@ async function createNotificationForProfiles(profiles, title, message, options =
       expiresAt = null
     } = options;
 
-    // Find all users with the specified profiles
-    const users = await User.find({ 
-      profilo: { $in: profiles } 
-    });
-
-    if (users.length === 0) {
-      console.log(`No users found with profiles: ${profiles.join(', ')}`);
-      return [];
-    }
-
-    // Create notifications for all matching users
     const notifications = [];
-    for (const user of users) {
+
+    // Create a notification for each profile, regardless of whether users exist
+    // The profile determines who can see the notification, not whether it gets created
+    for (const profile of profiles) {
       const notification = await Notification.createNotification({
-        userId: user._id,
-        username: user.username,
+        userId: null, // Generic notification not tied to specific user
+        username: null, // Will be filtered by profile in API
+        profileTarget: profile, // Target profile for this notification
         title,
         message,
         type,

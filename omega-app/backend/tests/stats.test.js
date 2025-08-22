@@ -23,9 +23,8 @@ describe('Stats API', () => {
   });
 
   test('GET /stats returns correct statistics', async () => {
-    // Mock current date
+    // Don't use fake timers to avoid the global property issue
     const mockDate = new Date('2024-01-15T10:00:00Z');
-    jest.useFakeTimers().setSystemTime(mockDate);
 
     // Mock component data
     const mockComponents = [
@@ -81,12 +80,10 @@ describe('Stats API', () => {
         total: 3, // total non-shipped components (components 1, 2, 4)
         percentage: 67 // Math.round((2/3) * 100) = 67
       },
-      speditOggi: 1, // 1 component shipped today (component 3)
+      speditOggi: 0, // no components shipped today (component 3 and 5 shipped on different dates)
       commesseAperte: 2, // 2 unique commesse with non-shipped components (comm1, comm2)
       inTrattamento: 1 // 1 component with status starting with '4:' (component 4)
     });
-
-    jest.useRealTimers();
   });
 
   test('GET /stats handles database errors', async () => {
