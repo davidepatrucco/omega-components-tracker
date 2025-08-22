@@ -12,6 +12,8 @@ COPY . .
 RUN npm run build
 
 FROM nginx:alpine
+# Remove default nginx configuration
+RUN rm /etc/nginx/conf.d/default.conf
 # Copy custom nginx configuration for SPA routing
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy built files
