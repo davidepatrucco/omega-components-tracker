@@ -21,8 +21,6 @@ services:
       - "letsencrypt:/letsencrypt"
     restart: unless-stopped
 
-  
-
   omega_backend:
     image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:staging
     container_name: omega_backend
