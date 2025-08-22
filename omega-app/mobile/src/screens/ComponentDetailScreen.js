@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Application from 'expo-application';
 import { statusAPI } from '../services/api';
 import { BASE_STATUSES, getStatusLabel } from '../services/statusConfig';
+import { CONFIG, canAutoTransition } from '../config/config';
 
 export default function ComponentDetailScreen({ route, navigation }) {
   const { component: initialComponent, scannedBarcode } = route.params;
@@ -43,8 +44,7 @@ export default function ComponentDetailScreen({ route, navigation }) {
   };
 
   const canAutoTransitionTo3 = () => {
-    const allowedFromStates = ['1', '2', '2-ext'];
-    return allowedFromStates.includes(component.status);
+    return canAutoTransition(component.status);
   };
 
   const handleAutoStatusChange = async () => {
@@ -58,7 +58,7 @@ export default function ComponentDetailScreen({ route, navigation }) {
 
     Alert.alert(
       'Conferma Cambio Stato',
-      `Vuoi cambiare lo stato del componente da "${getStatusLabel(component.status)}" a "${getStatusLabel(BASE_STATUSES.COSTRUITO)}"?`,
+      `Vuoi cambiare lo stato del componente da "${getStatusLabel(component.status)}" a "${CONFIG.BARCODE.TARGET_STATUS_LABEL}"?`,
       [
         { text: 'Annulla', style: 'cancel' },
         { 
@@ -78,7 +78,7 @@ export default function ComponentDetailScreen({ route, navigation }) {
       
       const result = await statusAPI.changeStatus(
         component._id,
-        BASE_STATUSES.COSTRUITO,
+        CONFIG.BARCODE.TARGET_STATUS,
         note
       );
 
@@ -86,10 +86,10 @@ export default function ComponentDetailScreen({ route, navigation }) {
         // Update local component state
         setComponent(prev => ({
           ...prev,
-          status: BASE_STATUSES.COSTRUITO,
+          status: CONFIG.BARCODE.TARGET_STATUS,
           history: [...(prev.history || []), {
             from: prev.status,
-            to: BASE_STATUSES.COSTRUITO,
+            to: CONFIG.BARCODE.TARGET_STATUS,
             date: new Date(),
             note: note,
             user: 'mobile'
@@ -98,7 +98,7 @@ export default function ComponentDetailScreen({ route, navigation }) {
 
         Alert.alert(
           'Successo',
-          `Stato cambiato con successo a "${getStatusLabel(BASE_STATUSES.COSTRUITO)}"`,
+          `Stato cambiato con successo a "${CONFIG.BARCODE.TARGET_STATUS_LABEL}"`,
           [
             { text: 'OK' }
           ]
@@ -229,7 +229,7 @@ export default function ComponentDetailScreen({ route, navigation }) {
             {canAutoTransitionTo3() ? (
               <>
                 <Text style={styles.actionDescription}>
-                  Il componente può essere automaticamente portato allo stato "3 - Costruito".
+                  Il componente può essere automaticamente portato allo stato "{CONFIG.BARCODE.TARGET_STATUS_LABEL}".
                 </Text>
                 <WhiteSpace />
                 <Button 
@@ -241,7 +241,7 @@ export default function ComponentDetailScreen({ route, navigation }) {
                   {loading ? (
                     <ActivityIndicator color="white" size="small" />
                   ) : (
-                    `Cambia stato a "3 - Costruito"`
+                    `Cambia stato a "${CONFIG.BARCODE.TARGET_STATUS_LABEL}"`
                   )}
                 </Button>
               </>
@@ -250,7 +250,7 @@ export default function ComponentDetailScreen({ route, navigation }) {
                 <Ionicons name="information-circle-outline" size={24} color="#fa8c16" />
                 <Text style={styles.noActionText}>
                   Lo stato attuale "{getStatusLabel(component.status)}" non permette la transizione automatica.
-                  {'\n\n'}Solo gli stati "1 - Nuovo", "2 - Produzione Interna" e "2 - Produzione Esterna" permettono il cambio automatico a "3 - Costruito".
+                  {'\n\n'}Solo gli stati "1 - Nuovo", "2 - Produzione Interna" e "2 - Produzione Esterna" permettono il cambio automatico a "{CONFIG.BARCODE.TARGET_STATUS_LABEL}".
                 </Text>
               </View>
             )}

@@ -1,10 +1,12 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { getApiBaseUrl, CONFIG } from '../config/config';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'http://localhost:4000', // Default for development - should be configurable
+  baseURL: getApiBaseUrl(),
   withCredentials: false, // Mobile doesn't support cookies, we'll use headers
+  timeout: CONFIG.API.TIMEOUT,
 });
 
 // Mobile token storage utilities
