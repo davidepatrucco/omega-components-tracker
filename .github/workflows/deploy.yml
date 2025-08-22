@@ -56,7 +56,7 @@ jobs:
             AZURE_STORAGE_ACCOUNT=${{ github.ref == 'refs/heads/staging' && secrets.AZURE_STORAGE_ACCOUNT_STAGE || secrets.AZURE_STORAGE_ACCOUNT }}
             AZURE_STORAGE_KEY=${{ github.ref == 'refs/heads/staging' && secrets.AZURE_STORAGE_KEY_STAGE || secrets.AZURE_STORAGE_KEY }}
             AZURE_FILE_SHARE=${{ github.ref == 'refs/heads/staging' && secrets.AZURE_FILE_SHARE_STAGE || secrets.AZURE_FILE_SHARE }}
-            FRONTEND_ORIGIN_STAGE=${{ github.ref == 'refs/heads/staging' && 'https://staging.omega.intellitude.com' || 'https://omega.intellitude.com' }}
+            FRONTEND_ORIGIN=${{ github.ref == 'refs/heads/staging' && 'https://staging.omega.intellitude.com' || 'https://omega.intellitude.com' }}
             PORT=4000
           tags: |
             152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:${{ env.TAG }}
