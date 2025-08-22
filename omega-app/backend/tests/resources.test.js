@@ -37,24 +37,24 @@ async function loginAsAdmin() {
 test('create commessa, create component, list components, update component, change status', async () => {
   // create commessa
   const token = await loginAsAdmin();
-  const cRes = await request(app).post('/commesse').set('Authorization', `Bearer ${token}`).send({ code: 'C-100', name: 'Test Commessa' }).expect(201);
+  const cRes = await request(app).post('/api/commesse').set('Authorization', `Bearer ${token}`).send({ code: 'C-100', name: 'Test Commessa' }).expect(201);
   const commessa = cRes.body;
 
   // create component
-  const compRes = await request(app).post('/components').set('Authorization', `Bearer ${token}`).send({ commessaId: commessa._id, name: 'CompA', barcode: 'B001', status: '1' }).expect(201);
+  const compRes = await request(app).post('/api/components').set('Authorization', `Bearer ${token}`).send({ commessaId: commessa._id, name: 'CompA', barcode: 'B001', status: '1' }).expect(201);
   const comp = compRes.body;
   expect(comp.name).toBe('CompA');
 
   // list components
-  const list = await request(app).get('/components').set('Authorization', `Bearer ${token}`).expect(200);
+  const list = await request(app).get('/api/components').set('Authorization', `Bearer ${token}`).expect(200);
   expect(list.body.total).toBe(1);
 
   // update component
-  const upd = await request(app).put(`/components/${comp._id}`).set('Authorization', `Bearer ${token}`).send({ name: 'CompA-upd' }).expect(200);
+  const upd = await request(app).put(`/api/components/${comp._id}`).set('Authorization', `Bearer ${token}`).send({ name: 'CompA-upd' }).expect(200);
   expect(upd.body.name).toBe('CompA-upd');
 
   // change status
-  const ch = await request(app).post('/changestatus').set('Authorization', `Bearer ${token}`).send({ componentId: comp._id, to: '2', note: 'ok' }).expect(200);
+  const ch = await request(app).post('/api/changestatus').set('Authorization', `Bearer ${token}`).send({ componentId: comp._id, to: '2', note: 'ok' }).expect(200);
   expect(ch.body.status).toBe('2');
   expect(Array.isArray(ch.body.history)).toBe(true);
 });
