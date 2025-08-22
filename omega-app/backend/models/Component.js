@@ -67,6 +67,16 @@ ComponentSchema.pre('save', function(next) {
   next();
 });
 
+// Indici per performance
+ComponentSchema.index({ commessaId: 1 });
+ComponentSchema.index({ barcode: 1 });
+ComponentSchema.index({ status: 1 });
+ComponentSchema.index({ commessaCode: 1 });
+ComponentSchema.index({ commessaId: 1, status: 1 });
+ComponentSchema.index({ "history.date": -1 });
+ComponentSchema.index({ createdAt: -1 });
+ComponentSchema.index({ updatedAt: -1 });
+
 // Funzione per calcolare gli stati consentiti (manteniamo per compatibilità)
 ComponentSchema.methods.buildAllowedStatuses = function() {
   return buildAllowedStatuses(this);
