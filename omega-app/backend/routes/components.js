@@ -5,14 +5,18 @@ const Commessa = require('../models/Commessa');
 const { requireAuth } = require('../middleware/auth');
 const { buildAllowedStatuses, populateAllowedStatuses, processStatusChange } = require('../utils/statusUtils');
 
-// GET /components - list with pagination and optional q, commessaId
+// GET /components - list with pagination and optional q, commessaId, barcode
 router.get('/', requireAuth, async (req, res) => {
   const page = parseInt(req.query.page || '1', 10);
   const pageSize = parseInt(req.query.pageSize || '25', 10);
   const q = req.query.q;
   const commessaId = req.query.commessaId;
+  const barcode = req.query.barcode;
+  
   const filter = { cancellato: { $ne: true } };
   if (commessaId) filter.commessaId = commessaId;
+  if (q) filter.name = { $regex: q, $options: 'i' };
+  if (barcode) filter.barcode = barcode;
   if (q) filter.descrizioneComponente = { $regex: q, $options: 'i' };
   const total = await Component.countDocuments(filter);
   const items = await Component.find(filter).skip((page-1)*pageSize).limit(pageSize).lean();
