@@ -24,15 +24,9 @@ services:
   omega_backend:
     image: 152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:staging
     container_name: omega_backend
-    environment:
-      - AZURE_STORAGE_ACCOUNT=${AZURE_STORAGE_ACCOUNT}
-      - AZURE_STORAGE_KEY=${AZURE_STORAGE_KEY}
-      - AZURE_FILE_SHARE=${AZURE_FILE_SHARE}
-      - PORT=4000
-      - FRONTEND_ORIGIN_STAGE=https://staging.omega.intellitude.com
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.omega_backend.rule=Host(`staging.omega.intellitude.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.omega_backend.rule=Host(`staging.omega.intellitude.com`) && (PathPrefix(`/api`) || PathPrefix(`/auth`))"
       - "traefik.http.routers.omega_backend.entrypoints=websecure"
       - "traefik.http.routers.omega_backend.tls.certresolver=le"
       - "traefik.http.routers.omega_backend.priority=100"
