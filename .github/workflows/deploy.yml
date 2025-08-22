@@ -68,6 +68,8 @@ jobs:
           context: ./omega-app/frontend
           file: ./omega-app/frontend/Dockerfile
           push: true
+          build-args: |
+            VITE_API_URL=${{ github.ref == 'refs/heads/staging' && 'https://api.staging.omega.intellitude.com' || 'https://api.omega.intellitude.com' }}
           tags: |
             152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:${{ env.TAG }}
             152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:${{ env.EXTRA_TAG }}

@@ -405,8 +405,8 @@ Steps:
 | Environment | Branch | Deployment | URL |
 |-------------|---------|------------|-----|
 | **Development** | `feature/*` | Locale | `localhost:5173` |
-| **Staging** | `staging` | Auto su push | `staging.domain.com` |
-| **Production** | `main` | Auto su push | `tracker.omega.intellitude.com` |
+| **Staging** | `staging` | Auto su push | `staging.omega.intellitude.com` |
+| **Production** | `main` | Auto su push | `staging.omega.intellitude.com` |
 
 ---
 
