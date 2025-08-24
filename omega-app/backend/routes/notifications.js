@@ -40,7 +40,24 @@ router.get('/', requireAuth, async (req, res) => {
             // Notifiche specifiche per l'utente
             { username },
             // Notifiche per i profili che può vedere
-            { profileTarget: { $in: allowedProfiles } }
+            {
+              $or: [
+                // Se profileTarget è una stringa, controlla se è in allowedProfiles
+                { 
+                  $and: [
+                    { profileTarget: { $type: "string" } },
+                    { profileTarget: { $in: allowedProfiles } }
+                  ]
+                },
+                // Se profileTarget è un array, controlla se ha intersezione con allowedProfiles
+                {
+                  $and: [
+                    { profileTarget: { $type: "array" } },
+                    { profileTarget: { $in: allowedProfiles } }
+                  ]
+                }
+              ]
+            }
           ]
         }
       ]

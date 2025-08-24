@@ -27,28 +27,24 @@ async function createNotificationForProfiles(profiles, title, message, options =
       expiresAt = null
     } = options;
 
-    const notifications = [];
+    // Create a single notification with multiple target profiles
+    const profileTarget = profiles.length === 1 ? profiles[0] : profiles;
+    
+    const notification = await Notification.createNotification({
+      userId: null, // Generic notification not tied to specific user
+      username: null, // Will be filtered by profile in API
+      profileTarget: profileTarget, // Can be string (single) or array (multiple)
+      title,
+      message,
+      type,
+      priority,
+      relatedEntity,
+      actionUrl,
+      expiresAt
+    });
 
-    // Create a notification for each profile, regardless of whether users exist
-    // The profile determines who can see the notification, not whether it gets created
-    for (const profile of profiles) {
-      const notification = await Notification.createNotification({
-        userId: null, // Generic notification not tied to specific user
-        username: null, // Will be filtered by profile in API
-        profileTarget: profile, // Target profile for this notification
-        title,
-        message,
-        type,
-        priority,
-        relatedEntity,
-        actionUrl,
-        expiresAt
-      });
-      notifications.push(notification);
-    }
-
-    console.log(`Created ${notifications.length} notifications for profiles: ${profiles.join(', ')}`);
-    return notifications;
+    console.log(`Created 1 notification for profiles: ${profiles.join(', ')}`);
+    return [notification];
 
   } catch (error) {
     console.error('Error creating notifications for profiles:', error);
