@@ -5,7 +5,7 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => {
     try { 
-      // Controlla se il token è ancora valido (60 giorni)
+      // Controlla se il token è ancora valido (15 minuti + buffer)
       const savedToken = localStorage.getItem('auth_token');
       const tokenExpiry = localStorage.getItem('auth_token_expiry');
       
@@ -16,10 +16,9 @@ export function AuthProvider({ children }) {
         if (now < expiry) {
           return savedToken;
         } else {
-          // Token scaduto, rimuovi tutto
+          // Token scaduto, rimuovi tutto tranne il refresh token (è nel cookie)
           localStorage.removeItem('auth_token');
           localStorage.removeItem('auth_token_expiry');
-          localStorage.removeItem('auth_refresh_token');
           localStorage.removeItem('auth_user');
           return null;
         }
@@ -47,13 +46,13 @@ export function AuthProvider({ children }) {
     try {
       if (token) {
         localStorage.setItem('auth_token', token);
-        // Imposta scadenza a 60 giorni dal momento del salvataggio
-        const expiry = Date.now() + 60 * 24 * 60 * 60 * 1000;
+        // Imposta scadenza a 15 minuti dal momento del salvataggio
+        const expiry = Date.now() + 15 * 60 * 1000; // 15 minuti
         localStorage.setItem('auth_token_expiry', expiry.toString());
       } else {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_token_expiry');
-        localStorage.removeItem('auth_refresh_token');
+        // Non rimuovere il refresh token dal localStorage perché è gestito come cookie HttpOnly
       }
     } catch (e) {}
   }, [token]);
@@ -72,25 +71,18 @@ export function AuthProvider({ children }) {
     setToken(accessToken); 
     setUser(userData || null);
     
-    // Salva anche il refresh token se presente
-    if (refreshToken) {
-      try {
-        localStorage.setItem('auth_refresh_token', refreshToken);
-        console.log('✅ Refresh token salvato per la web app');
-      } catch (e) {
-        console.error('❌ Errore salvataggio refresh token:', e);
-      }
-    }
+    // Il refresh token è gestito automaticamente come cookie HttpOnly dal backend
+    // Non serve salvarlo nel localStorage
+    console.log('✅ Login completato, refresh token gestito via cookie');
   };
   
   const logout = () => { 
     setToken(null); 
     setUser(null);
-    // Pulizia completa di tutti i token
+    // Pulizia completa di tutti i token (il refresh token cookie sarà pulito dalla chiamata logout API)
     try {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_token_expiry');
-      localStorage.removeItem('auth_refresh_token');
       localStorage.removeItem('auth_user');
     } catch (e) {}
   };

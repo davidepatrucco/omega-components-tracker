@@ -9,24 +9,19 @@ const api = axios.create({
 // Funzione per tentare il refresh del token
 const tryRefreshToken = async () => {
   try {
-    const refreshToken = localStorage.getItem('auth_refresh_token');
-    if (!refreshToken) {
-      console.log('❌ Nessun refresh token disponibile');
-      return null;
-    }
-
     console.log('🔄 Tentativo refresh token...');
+    // Il refresh token è in un cookie HttpOnly, non serve inviarlo nel body
     const response = await axios.post(
       `${api.defaults.baseURL}/auth/refresh`,
-      { refreshToken },
+      {}, // Body vuoto - il refresh token è nel cookie
       { withCredentials: true }
     );
 
     if (response.data?.accessToken) {
       // Salva il nuovo access token
       localStorage.setItem('auth_token', response.data.accessToken);
-      // Aggiorna la scadenza
-      const expiry = Date.now() + 60 * 24 * 60 * 60 * 1000;
+      // Aggiorna la scadenza (15 minuti per l'access token)
+      const expiry = Date.now() + 15 * 60 * 1000; // 15 minuti
       localStorage.setItem('auth_token_expiry', expiry.toString());
       
       console.log('✅ Token refreshato con successo');
@@ -74,7 +69,6 @@ api.interceptors.response.use(
         console.log('❌ Refresh fallito, logout necessario');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_token_expiry');
-        localStorage.removeItem('auth_refresh_token');
         localStorage.removeItem('auth_user');
         window.location.href = '/login';
       }
