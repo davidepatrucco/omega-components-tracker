@@ -21,18 +21,23 @@ export default function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [debugMsg, setDebugMsg] = useState('LoginScreen mounted');
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
+      setDebugMsg('Login: campi vuoti');
       Alert.alert('Errore', 'Inserisci username e password');
       return;
     }
 
     setLoading(true);
+    setDebugMsg('Login: richiesta in corso...');
     try {
       await authAPI.login(username.trim(), password);
+      setDebugMsg('Login: successo!');
       onLogin();
     } catch (error) {
+      setDebugMsg('Login: errore ' + (error.userMessage || error.message));
       Alert.alert(
         'Errore di Login', 
         error.userMessage || 'Credenziali non valide'
@@ -40,6 +45,7 @@ export default function LoginScreen({ onLogin }) {
     } finally {
       setLoading(false);
     }
+    console.log('DEBUG LoginScreen:', debugMsg);
   };
 
   return (
@@ -98,6 +104,9 @@ export default function LoginScreen({ onLogin }) {
           <Text style={styles.footerText}>
             Scansiona barcode e gestisci componenti
           </Text>
+        </View>
+        <View style={{ marginTop: 20 }}>
+          <Text style={{ color: 'red', textAlign: 'center', fontWeight: 'bold' }}>DEBUG: {debugMsg}</Text>
         </View>
       </View>
     </KeyboardAvoidingView>

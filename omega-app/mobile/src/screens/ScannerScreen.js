@@ -25,47 +25,55 @@ export default function ScannerScreen({ navigation, onLogout }) {
   const [scanned, setScanned] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [user, setUser] = useState(null);
+  const [debugMsg, setDebugMsg] = useState('ScannerScreen mounted');
 
   useEffect(() => {
-    getCameraPermissions();
-    loadUser();
+  setDebugMsg('ScannerScreen: useEffect');
+  getCameraPermissions();
+  loadUser();
   }, []);
 
   const getCameraPermissions = async () => {
-    const { status } = await BarCodeScanner.requestPermissionsAsync();
-    setHasPermission(status === 'granted');
+  setDebugMsg('ScannerScreen: requesting camera permissions...');
+  const { status } = await BarCodeScanner.requestPermissionsAsync();
+  setDebugMsg('ScannerScreen: camera status=' + status);
+  setHasPermission(status === 'granted');
   };
 
   const loadUser = async () => {
     try {
+      setDebugMsg('ScannerScreen: loading user...');
       const userData = await tokenStorage.getUser();
       setUser(userData);
+      setDebugMsg('ScannerScreen: user loaded: ' + JSON.stringify(userData));
     } catch (error) {
+      setDebugMsg('ScannerScreen: error loading user: ' + error);
       console.error('Error loading user:', error);
     }
   };
 
   const handleBarCodeScanned = async ({ type, data }) => {
     if (scanned) return;
-    
+    setDebugMsg('ScannerScreen: barcode scanned: ' + data);
     setScanned(true);
     setScanning(true);
 
     try {
       console.log(`Barcode scanned: ${data}`);
-      
+      setDebugMsg('ScannerScreen: searching component for barcode...');
       // Search for component by barcode
       const result = await componentsAPI.searchByBarcode(data);
-      
+      setDebugMsg('ScannerScreen: search result: ' + JSON.stringify(result));
       if (result.items && result.items.length > 0) {
         const component = result.items[0];
-        
+        setDebugMsg('ScannerScreen: component found, navigating...');
         // Navigate to component detail
         navigation.navigate('ComponentDetail', { 
           component,
           scannedBarcode: data 
         });
       } else {
+        setDebugMsg('ScannerScreen: componente non trovato');
         Alert.alert(
           'Componente non trovato',
           `Nessun componente trovato per il barcode: ${data}`,
@@ -75,6 +83,7 @@ export default function ScannerScreen({ navigation, onLogout }) {
         );
       }
     } catch (error) {
+      setDebugMsg('ScannerScreen: errore ricerca componente: ' + error);
       console.error('Error searching component:', error);
       Alert.alert(
         'Errore',
@@ -116,6 +125,7 @@ export default function ScannerScreen({ navigation, onLogout }) {
       <View style={styles.centeredContainer}>
         <ActivityIndicator size="large" />
         <Text style={styles.statusText}>Richiesta permessi camera...</Text>
+        <Text style={{ color: 'red', marginTop: 20 }}>DEBUG: {debugMsg}</Text>
       </View>
     );
   }
@@ -139,6 +149,7 @@ export default function ScannerScreen({ navigation, onLogout }) {
             </Button>
           </Card.Body>
         </Card>
+        <Text style={{ color: 'red', marginTop: 20 }}>DEBUG: {debugMsg}</Text>
       </View>
     );
   }
@@ -158,6 +169,10 @@ export default function ScannerScreen({ navigation, onLogout }) {
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Ionicons name="log-out-outline" size={24} color="#f5222d" />
         </TouchableOpacity>
+      </View>
+
+      <View style={{ marginTop: 10 }}>
+        <Text style={{ color: 'red', textAlign: 'center', fontWeight: 'bold' }}>DEBUG: {debugMsg}</Text>
       </View>
 
       {/* Scanner */}

@@ -6,6 +6,40 @@ const api = axios.create({
   withCredentials: true, // Include cookies for authentication
 });
 
+// Funzione per tentare il refresh del token
+const tryRefreshToken = async () => {
+  try {
+    const refreshToken = localStorage.getItem('auth_refresh_token');
+    if (!refreshToken) {
+      console.log('❌ Nessun refresh token disponibile');
+      return null;
+    }
+
+    console.log('🔄 Tentativo refresh token...');
+    const response = await axios.post(
+      `${api.defaults.baseURL}/auth/refresh`,
+      { refreshToken },
+      { withCredentials: true }
+    );
+
+    if (response.data?.accessToken) {
+      // Salva il nuovo access token
+      localStorage.setItem('auth_token', response.data.accessToken);
+      // Aggiorna la scadenza
+      const expiry = Date.now() + 60 * 24 * 60 * 60 * 1000;
+      localStorage.setItem('auth_token_expiry', expiry.toString());
+      
+      console.log('✅ Token refreshato con successo');
+      return response.data.accessToken;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('❌ Errore refresh token:', error);
+    return null;
+  }
+};
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
@@ -18,15 +52,32 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle errors
+// Response interceptor to handle errors with automatic refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid - redirect to login
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
-      window.location.href = '/login';
+  async (error) => {
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      console.log('⚠️ Token scaduto, tentativo refresh...');
+      const newToken = await tryRefreshToken();
+      
+      if (newToken) {
+        // Refresh riuscito, riprova la richiesta originale con il nuovo token
+        console.log('🔄 Refresh riuscito, riprovo la richiesta...');
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return api(originalRequest);
+      } else {
+        // Refresh fallito, fai logout completo
+        console.log('❌ Refresh fallito, logout necessario');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_token_expiry');
+        localStorage.removeItem('auth_refresh_token');
+        localStorage.removeItem('auth_user');
+        window.location.href = '/login';
+      }
     }
     
     // Add userMessage to error for consistent error handling

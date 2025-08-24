@@ -32,13 +32,22 @@ export default function LoginPage(){
     setLoading(true);
     try {
       const res = await api.post('/auth/login', values);
-      login(res.data.accessToken, res.data.user);
-      message.success('Accesso effettuato');
+      
+      // Passa sia accessToken che refreshToken (se presente) al context
+      login(
+        res.data.accessToken, 
+        res.data.user, 
+        res.data.refreshToken // Questo potrebbe essere undefined, va bene
+      );
+      
+      message.success('Accesso effettuato - sessione valida per 60 giorni');
       // redirect to main page
       navigate('/');
     } catch (err) {
       message.error(err?.response?.data?.error || 'Credenziali errate');
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const getEnvironmentColor = (env) => {

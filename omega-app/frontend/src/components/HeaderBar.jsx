@@ -1,6 +1,6 @@
-import React from 'react';
-import { Layout, Dropdown, Badge, Button, Typography } from 'antd';
-import { BellOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Layout, Dropdown, Badge, Button, Typography, Tooltip } from 'antd';
+import { BellOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useAuth } from '../AuthContext';
 import NotificationBadge from './NotificationBadge';
 import axios from 'axios';
@@ -11,6 +11,37 @@ const { Header } = Layout;
 export default function HeaderBar({ collapsed, onToggle }){
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const [sessionInfo, setSessionInfo] = useState('');
+
+  // Calcola info sessione
+  useEffect(() => {
+    const updateSessionInfo = () => {
+      try {
+        const tokenExpiry = localStorage.getItem('auth_token_expiry');
+        const refreshToken = localStorage.getItem('auth_refresh_token');
+        
+        if (tokenExpiry) {
+          const expiry = parseInt(tokenExpiry);
+          const now = Date.now();
+          const daysLeft = Math.ceil((expiry - now) / (24 * 60 * 60 * 1000));
+          
+          if (refreshToken) {
+            setSessionInfo(`Sessione attiva per ${daysLeft} giorni`);
+          } else {
+            setSessionInfo(`Token attivo per ${daysLeft} giorni`);
+          }
+        } else {
+          setSessionInfo('Sessione temporanea');
+        }
+      } catch (e) {
+        setSessionInfo('');
+      }
+    };
+
+    updateSessionInfo();
+    const interval = setInterval(updateSessionInfo, 60000); // Aggiorna ogni minuto
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
     try { await axios.post('/auth/logout', {}, { withCredentials: true }); } catch (e) { /* ignore */ }
@@ -41,6 +72,26 @@ export default function HeaderBar({ collapsed, onToggle }){
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Indicatore Sessione */}
+        {sessionInfo && (
+          <Tooltip title="Refresh automatico dei token attivo">
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              padding: '4px 8px', 
+              background: '#f0f9ff', 
+              borderRadius: 6,
+              border: '1px solid #0ea5e9'
+            }}>
+              <CheckCircleOutlined style={{ color: '#0ea5e9', fontSize: 12 }} />
+              <Typography.Text style={{ fontSize: 11, color: '#0369a1' }}>
+                {sessionInfo}
+              </Typography.Text>
+            </div>
+          </Tooltip>
+        )}
+
         <NotificationBadge>
           <Button 
             type="text" 
