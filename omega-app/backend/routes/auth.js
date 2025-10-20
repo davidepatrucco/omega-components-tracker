@@ -32,7 +32,11 @@ router.post('/login', async (req, res) => {
     maxAge: 180 * 24 * 3600 * 1000
   });
 
-  res.json({ accessToken, user: { username: user.username, profilo: user.profilo } });
+  res.json({ 
+    accessToken, 
+    user: { username: user.username, profilo: user.profilo },
+    sessionExpiresAt: expiresAt.getTime() // Aggiungi timestamp di scadenza sessione
+  });
 });
 
 // POST /auth/refresh
@@ -66,7 +70,10 @@ router.post('/refresh', async (req, res) => {
     });
 
     const accessToken = signAccess({ sub: user._id.toString(), username: user.username, profilo: user.profilo });
-    res.json({ accessToken });
+    res.json({ 
+      accessToken,
+      sessionExpiresAt: expiresAt.getTime() // Aggiungi timestamp di scadenza sessione
+    });
   } catch (err) {
     return res.status(401).json({ error: 'invalid refresh token' });
   }

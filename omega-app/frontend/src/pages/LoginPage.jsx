@@ -37,10 +37,11 @@ export default function LoginPage(){
       login(
         res.data.accessToken, 
         res.data.user, 
-        res.data.refreshToken // Questo potrebbe essere undefined, va bene
+        res.data.refreshToken, // Questo potrebbe essere undefined, va bene
+        res.data.sessionExpiresAt // Timestamp di scadenza sessione
       );
       
-      message.success('Accesso effettuato - sessione valida per 60 giorni');
+      message.success('Accesso effettuato - sessione valida per 180 giorni');
       // redirect to main page
       navigate('/');
     } catch (err) {

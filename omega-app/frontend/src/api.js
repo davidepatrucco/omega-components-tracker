@@ -24,6 +24,11 @@ const tryRefreshToken = async () => {
       const expiry = Date.now() + 15 * 60 * 1000; // 15 minuti
       localStorage.setItem('auth_token_expiry', expiry.toString());
       
+      // Salva anche la nuova scadenza della sessione se fornita
+      if (response.data?.sessionExpiresAt) {
+        localStorage.setItem('auth_session_expiry', response.data.sessionExpiresAt.toString());
+      }
+      
       console.log('✅ Token refreshato con successo');
       return response.data.accessToken;
     }

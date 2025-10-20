@@ -67,9 +67,16 @@ export function AuthProvider({ children }) {
     } catch (e) {}
   }, [user, token]);
 
-  const login = (accessToken, userData, refreshToken = null) => { 
+  const login = (accessToken, userData, refreshToken = null, sessionExpiresAt = null) => { 
     setToken(accessToken); 
     setUser(userData || null);
+    
+    // Salva la scadenza della sessione (refresh token) se fornita
+    if (sessionExpiresAt) {
+      try {
+        localStorage.setItem('auth_session_expiry', sessionExpiresAt.toString());
+      } catch (e) {}
+    }
     
     // Il refresh token è gestito automaticamente come cookie HttpOnly dal backend
     // Non serve salvarlo nel localStorage
@@ -84,6 +91,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_token_expiry');
       localStorage.removeItem('auth_user');
+      localStorage.removeItem('auth_session_expiry'); // Rimuovi anche la scadenza sessione
     } catch (e) {}
   };
 

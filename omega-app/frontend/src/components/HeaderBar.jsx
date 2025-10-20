@@ -17,21 +17,27 @@ export default function HeaderBar({ collapsed, onToggle }){
   useEffect(() => {
     const updateSessionInfo = () => {
       try {
-        const tokenExpiry = localStorage.getItem('auth_token_expiry');
+        const sessionExpiry = localStorage.getItem('auth_session_expiry');
         const refreshToken = localStorage.getItem('auth_refresh_token');
         
-        if (tokenExpiry) {
-          const expiry = parseInt(tokenExpiry);
+        if (sessionExpiry) {
+          const expiry = parseInt(sessionExpiry);
           const now = Date.now();
           const daysLeft = Math.ceil((expiry - now) / (24 * 60 * 60 * 1000));
           
-          if (refreshToken) {
+          if (daysLeft > 0) {
             setSessionInfo(`Sessione attiva per ${daysLeft} giorni`);
           } else {
-            setSessionInfo(`Token attivo per ${daysLeft} giorni`);
+            setSessionInfo('Sessione scaduta');
           }
         } else {
-          setSessionInfo('Sessione temporanea');
+          // Fallback: se non abbiamo sessionExpiry, controlla se abbiamo un token
+          const token = localStorage.getItem('auth_token');
+          if (token) {
+            setSessionInfo('Sessione attiva per 180 giorni');
+          } else {
+            setSessionInfo('Sessione temporanea');
+          }
         }
       } catch (e) {
         setSessionInfo('');
