@@ -591,7 +591,7 @@ const DettaglioCommessa = () => {
           </Select>
         );
       } else if (inputType === 'boolean') {
-        inputNode = <Switch checkedChildren="Verificato" unCheckedChildren="Da verificare" />;
+        inputNode = <Switch checkedChildren="Sì" unCheckedChildren="No" />;
       } else if (inputType === 'number') {
         inputNode = <Input type="number" min="0" style={{ minWidth: 60 }} />;
       } else if (dataIndex === 'trattamenti') {
