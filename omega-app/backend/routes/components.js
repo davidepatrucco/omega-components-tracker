@@ -2,8 +2,42 @@ const express = require('express');
 const router = express.Router();
 const Component = require('../models/Component');
 const Commessa = require('../models/Commessa');
+const Treatment = require('../models/Treatment');
 const { requireAuth } = require('../middleware/auth');
 const { buildAllowedStatuses, populateAllowedStatuses, processStatusChange } = require('../utils/statusUtils');
+
+// Helper function per registrare i trattamenti nell'anagrafica
+async function registerTreatments(treatments) {
+  if (!Array.isArray(treatments) || treatments.length === 0) return;
+  
+  const normalizedTreatments = treatments
+    .map(t => typeof t === 'string' ? t.trim() : '')
+    .filter(t => t.length > 0);
+  
+  if (normalizedTreatments.length === 0) return;
+  
+  try {
+    await Promise.all(
+      normalizedTreatments.map(async (treatmentName) => {
+        await Treatment.findOneAndUpdate(
+          { name: treatmentName },
+          { 
+            $inc: { usageCount: 1 },
+            $set: { lastUsedAt: new Date() }
+          },
+          { 
+            upsert: true,
+            new: true,
+            setDefaultsOnInsert: true
+          }
+        );
+      })
+    );
+  } catch (err) {
+    console.error('Error registering treatments:', err);
+    // Non blocchiamo il salvataggio del componente se fallisce la registrazione
+  }
+}
 
 // GET /components - list with pagination and optional q, commessaId, barcode
 router.get('/', requireAuth, async (req, res) => {
@@ -70,6 +104,14 @@ router.post('/', requireAuth, async (req, res) => {
     populateAllowedStatuses(component);
     
     await component.save();
+    
+    // Registra i trattamenti nell'anagrafica (async, non blocca la risposta)
+    if (component.trattamenti && component.trattamenti.length > 0) {
+      registerTreatments(component.trattamenti).catch(err => 
+        console.error('Error registering treatments:', err)
+      );
+    }
+    
     res.status(201).json(component);
   } catch (err) {
     res.status(500).json({ error: 'Error creating component', details: err.message });
@@ -144,6 +186,14 @@ router.put('/:id', requireAuth, async (req, res) => {
         console.log(`[PUT /components/${req.params.id}] Saving attempt ${retryCount + 1}, version:`, component.__v);
         await component.save();
         console.log(`[PUT /components/${req.params.id}] Save successful, new version:`, component.__v);
+        
+        // Registra i trattamenti nell'anagrafica (async, non blocca la risposta)
+        if (component.trattamenti && component.trattamenti.length > 0) {
+          registerTreatments(component.trattamenti).catch(err => 
+            console.error('Error registering treatments:', err)
+          );
+        }
+        
         break;
       } catch (err) {
         console.log(`[PUT /components/${req.params.id}] Save error:`, err.name, err.message);

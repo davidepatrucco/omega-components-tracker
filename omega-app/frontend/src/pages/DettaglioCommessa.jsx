@@ -46,6 +46,7 @@ const DettaglioCommessa = () => {
   const [adding, setAdding] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [barcodeModal, setBarcodeModal] = useState({ open: false, value: '' });
+  const [treatments, setTreatments] = useState([]); // Lista trattamenti dall'anagrafica
   const [statusChangeModal, setStatusChangeModal] = useState({ 
     open: false, 
     componentId: null, 
@@ -97,7 +98,18 @@ const DettaglioCommessa = () => {
 
   useEffect(() => {
     fetchData();
+    fetchTreatments();
   }, [id]);
+
+  const fetchTreatments = async () => {
+    try {
+      const response = await api.get('/api/treatments');
+      setTreatments(response.data || []);
+    } catch (error) {
+      console.error('Error loading treatments:', error);
+      // Non mostrare errore all'utente, i trattamenti sono opzionali
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -583,14 +595,20 @@ const DettaglioCommessa = () => {
       } else if (inputType === 'number') {
         inputNode = <Input type="number" min="0" style={{ minWidth: 60 }} />;
       } else if (dataIndex === 'trattamenti') {
-        // Gestione speciale per i trattamenti con tag
+        // Gestione speciale per i trattamenti con tag e suggerimenti
         inputNode = (
           <Select
             mode="tags"
             style={{ minWidth: 200 }}
-            placeholder="Inserisci trattamenti (es: nichelatura, marcatura)"
+            placeholder="Seleziona o inserisci trattamenti"
             tokenSeparators={[',', '+', ';']}
-            open={false} // Impedisce dropdown, solo tag input
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={treatments.map(t => ({
+              label: t.name,
+              value: t.name
+            }))}
           />
         );
       } else {

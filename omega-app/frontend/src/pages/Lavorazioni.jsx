@@ -101,8 +101,23 @@ export default function Lavorazioni(){
         api.get('/api/stats')
       ]);
       
-      setComponents(componentsRes.data.items || []);
-      setCommesse(commisseRes.data || []);
+      const fetchedCommesse = commisseRes.data || [];
+      const fetchedComponents = componentsRes.data.items || [];
+      
+      // Crea una mappa commessaId -> deliveryDate per facilitare il join
+      const commesseMap = {};
+      fetchedCommesse.forEach(comm => {
+        commesseMap[comm._id] = comm.deliveryDate;
+      });
+      
+      // Arricchisci i componenti con deliveryDate dalla commessa
+      const enrichedComponents = fetchedComponents.map(comp => ({
+        ...comp,
+        deliveryDate: commesseMap[comp.commessaId] || null
+      }));
+      
+      setComponents(enrichedComponents);
+      setCommesse(fetchedCommesse);
       setStats(statsRes.data || {
         inLavorazione: 0,
         commesseAperte: 0,
@@ -265,7 +280,8 @@ export default function Lavorazioni(){
           (comp.commessaCode && comp.commessaCode.toLowerCase().includes(searchLower)) ||
           (comp.commessaName && comp.commessaName.toLowerCase().includes(searchLower)) ||
           (comp.descrizioneComponente && comp.descrizioneComponente.toLowerCase().includes(searchLower)) ||
-          (comp.barcode && comp.barcode.toLowerCase().includes(searchLower));
+          (comp.barcode && comp.barcode.toLowerCase().includes(searchLower)) ||
+          (comp.trattamenti && comp.trattamenti.some(t => t.toLowerCase().includes(searchLower)));
         if (!matchesSearch) return false;
       }
       
@@ -299,6 +315,11 @@ export default function Lavorazioni(){
         case 'descrizione':
           aVal = a.descrizioneComponente || '';
           bVal = b.descrizioneComponente || '';
+          break;
+        case 'deliveryDate':
+          // Ordina per data di consegna della commessa
+          aVal = a.deliveryDate ? new Date(a.deliveryDate) : new Date(0);
+          bVal = b.deliveryDate ? new Date(b.deliveryDate) : new Date(0);
           break;
         case 'createdAt':
         default:
@@ -433,9 +454,9 @@ export default function Lavorazioni(){
             border: '1px solid #e8e8e8'
           }}
         >
-          <Row gutter={[16, 16]} align="middle">
-            {/* Prima riga - Ricerca */}
-            <Col xs={24} sm={12} md={8}>
+          <Row gutter={[12, 16]} align="middle">
+            {/* Ricerca */}
+            <Col xs={24} sm={10} md={8} lg={7}>
               <Input
                 placeholder="Cerca componente, commessa, descrizione..."
                 value={filters.search}
@@ -447,9 +468,9 @@ export default function Lavorazioni(){
             </Col>
             
             {/* Filtro Verificato */}
-            <Col xs={12} sm={6} md={4}>
-              <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                <Text style={{ fontSize: 12, color: '#666' }}>Verificato</Text>
+            <Col xs={8} sm={4} md={3} lg={2}>
+              <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                <Text style={{ fontSize: 11, color: '#666' }}>Verif.</Text>
                 <Select
                   size="small"
                   value={filters.verificato}
@@ -465,9 +486,9 @@ export default function Lavorazioni(){
             </Col>
             
             {/* Filtro Include Spediti */}
-            <Col xs={12} sm={6} md={4}>
-              <Space direction="vertical" size={4}>
-                <Text style={{ fontSize: 12, color: '#666' }}>Includi spediti</Text>
+            <Col xs={8} sm={4} md={3} lg={2}>
+              <Space direction="vertical" size={2} align="center" style={{ width: '100%' }}>
+                <Text style={{ fontSize: 11, color: '#666' }}>Spediti</Text>
                 <Switch
                   size="small"
                   checked={filters.includeShipped}
@@ -477,16 +498,16 @@ export default function Lavorazioni(){
             </Col>
             
             {/* Filtro Stato */}
-            <Col xs={24} sm={12} md={4}>
-              <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                <Text style={{ fontSize: 12, color: '#666' }}>Stato</Text>
+            <Col xs={8} sm={6} md={4} lg={3}>
+              <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                <Text style={{ fontSize: 11, color: '#666' }}>Stato</Text>
                 <Select
                   size="small"
                   value={filters.status}
                   onChange={(value) => handleFilterChange('status', value)}
                   style={{ width: '100%' }}
                   options={[
-                    { label: 'Tutti gli stati', value: 'all' },
+                    { label: 'Tutti', value: 'all' },
                     { label: getStatusLabel('1'), value: '1' },
                     { label: getStatusLabel('2'), value: '2' },
                     { label: getStatusLabel('2-ext'), value: '2-ext' },
@@ -500,17 +521,18 @@ export default function Lavorazioni(){
             </Col>
             
             {/* Ordinamento */}
-            <Col xs={24} sm={12} md={6}>
-              <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                <Text style={{ fontSize: 12, color: '#666' }}>Ordina per</Text>
-                <Space size={4}>
+            <Col xs={24} sm={10} md={6} lg={5}>
+              <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                <Text style={{ fontSize: 11, color: '#666' }}>Ordina per</Text>
+                <Space size={4} style={{ width: '100%' }}>
                   <Select
                     size="small"
                     value={sortBy}
                     onChange={(value) => setSortBy(value)}
-                    style={{ width: 120 }}
+                    style={{ flex: 1, minWidth: 110 }}
                     options={[
-                      { label: 'Data creazione', value: 'createdAt' },
+                      { label: 'Data creaz.', value: 'createdAt' },
+                      { label: 'Data consegna', value: 'deliveryDate' },
                       { label: 'Commessa', value: 'commessaCode' },
                       { label: 'Stato', value: 'status' },
                       { label: 'Descrizione', value: 'descrizione' }
