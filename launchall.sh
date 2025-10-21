@@ -14,7 +14,7 @@ lsof -ti:5174 | xargs kill -9 2>/dev/null || true
 sleep 2
 
 echo "🚀 Starting backend..."
-cd /Users/davide.patrucco/Desktop/Personal/omega/omega-app/backend
+cd /Users/davide.patrucco/Desktop/Bifa\ projects/omega-components-tracker/omega-app/backend
 node server.js &
 BACKEND_PID=$!
 echo "Backend started with PID: $BACKEND_PID"
@@ -22,7 +22,7 @@ echo "Backend started with PID: $BACKEND_PID"
 sleep 3
 
 echo "🚀 Starting frontend..."
-cd /Users/davide.patrucco/Desktop/Personal/omega/omega-app/frontend
+cd /Users/davide.patrucco/Desktop/Bifa\ projects/omega-components-tracker/omega-app/frontend
 npm run dev &
 FRONTEND_PID=$!
 echo "Frontend started with PID: $FRONTEND_PID"

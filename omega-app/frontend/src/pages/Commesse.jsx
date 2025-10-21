@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Input, Form, Popconfirm, message, Space, Tooltip, Modal, Upload, Progress, Typography, Card } from 'antd';
+import { Table, Button, Input, Form, Popconfirm, message, Space, Tooltip, Modal, Upload, Progress, Typography, Card, DatePicker } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, CloseOutlined, UploadOutlined, InfoCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { api } from '../api';
 import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -10,6 +11,16 @@ const columnsDef = [
   { title: 'Codice', dataIndex: 'code', key: 'code', width: 120, editable: true, sorter: (a, b) => a.code.localeCompare(b.code), sortDirections: ['ascend', 'descend'], filtered: true, filterSearch: true },
   { title: 'Nome', dataIndex: 'name', key: 'name', width: 180, editable: true, sorter: (a, b) => a.name.localeCompare(b.name), sortDirections: ['ascend', 'descend'], filtered: true, filterSearch: true },
   { title: 'Note', dataIndex: 'notes', key: 'notes', width: 200, editable: true, sorter: (a, b) => (a.notes || '').localeCompare(b.notes || ''), sortDirections: ['ascend', 'descend'], filtered: true, filterSearch: true },
+  { title: 'Data di consegna', dataIndex: 'deliveryDate', key: 'deliveryDate', width: 160, 
+    render: t => t ? dayjs(t).format('DD/MM/YYYY') : '-', 
+    editable: true, editType: 'date',
+    sorter: (a, b) => {
+      const dateA = a.deliveryDate ? new Date(a.deliveryDate) : new Date(0);
+      const dateB = b.deliveryDate ? new Date(b.deliveryDate) : new Date(0);
+      return dateA - dateB;
+    }, 
+    sortDirections: ['ascend', 'descend'] 
+  },
   { title: 'Data creazione', dataIndex: 'createdAt', key: 'createdAt', width: 160, render: t => t ? new Date(t).toLocaleString() : '-', editable: false, sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt), sortDirections: ['ascend', 'descend'] },
 ];
 
@@ -46,7 +57,12 @@ export default function Commesse() {
   const isEditing = (record) => record._id === editingKey || (adding && record._id === undefined);
 
   const edit = (record) => {
-    form.setFieldsValue({ ...record });
+    const formValues = { ...record };
+    // Convert deliveryDate to dayjs for the form
+    if (formValues.deliveryDate) {
+      formValues.deliveryDate = dayjs(formValues.deliveryDate);
+    }
+    form.setFieldsValue(formValues);
     setEditingKey(record._id);
   };
 
@@ -60,9 +76,17 @@ export default function Commesse() {
     try {
       const row = await form.validateFields();
       // Remove fields not accepted by backend
-      const { createdAt, updatedAt, _id, notes, ...payload } = row;
+      const { createdAt, updatedAt, _id, notes, deliveryDate, ...payload } = row;
+      
       // Map notes field to note for backend
       if (notes !== undefined) payload.note = notes;
+      
+      // Handle deliveryDate conversion
+      if (deliveryDate) {
+        payload.deliveryDate = dayjs(deliveryDate).toISOString();
+      } else if (deliveryDate === null) {
+        payload.deliveryDate = null;
+      }
       
       // Find original record to get code and name if missing
       const currentCommesse = Array.isArray(commesse) ? commesse : [];
@@ -105,7 +129,7 @@ export default function Commesse() {
       return;
     }
     
-    const { code, name, note } = values;
+    const { code, name, note, deliveryDate } = values;
     if (!code?.trim() || !name?.trim()) {
       message.error('Compila tutti i campi obbligatori');
       return;
@@ -117,6 +141,7 @@ export default function Commesse() {
       formData.append('code', code.trim());
       formData.append('name', name.trim());
       if (note) formData.append('note', note.trim());
+      if (deliveryDate) formData.append('deliveryDate', dayjs(deliveryDate).toISOString());
       formData.append('excel', fileList[0].originFileObj);
       
       await api.post('/api/commesse/import-excel', formData, { 
@@ -226,7 +251,7 @@ export default function Commesse() {
       ...col,
       onCell: (record) => ({
         record,
-        inputType: 'text',
+        inputType: col.editType === 'date' ? 'date' : 'text',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
@@ -239,6 +264,17 @@ export default function Commesse() {
     if (editing && (dataIndex === 'code' || dataIndex === 'name')) {
       rules = [{ required: true, message: 'Campo obbligatorio' }];
     }
+    
+    const inputNode = inputType === 'date' ? (
+      <DatePicker 
+        format="DD/MM/YYYY"
+        placeholder="Seleziona data"
+        style={{ width: '100%' }}
+      />
+    ) : (
+      <Input type={inputType} />
+    );
+    
     return (
       <td {...restProps}>
         {editing ? (
@@ -246,8 +282,20 @@ export default function Commesse() {
             name={dataIndex}
             style={{ margin: 0 }}
             rules={rules}
+            getValueProps={(value) => {
+              if (inputType === 'date' && value) {
+                return { value: dayjs(value) };
+              }
+              return { value };
+            }}
+            normalize={(value) => {
+              if (inputType === 'date' && value) {
+                return value.toISOString();
+              }
+              return value;
+            }}
           >
-            <Input type={inputType} />
+            {inputNode}
           </Form.Item>
         ) : children}
       </td>
@@ -261,7 +309,7 @@ export default function Commesse() {
       {/* Header Card */}
       <Card style={{ marginBottom: 24, borderRadius: 10 }}>
         <Title level={2} style={{ margin: 0, marginBottom: 8 }}>Gestione commesse</Title>
-        <Text type="secondary">Crea, modifica e gestisci le commesse del sistema</Text>
+        <Text type="secondary">Crea, modifica e gestisci le commesse del sistema. Doppio click su una riga per modificarla.</Text>
       </Card>
 
       {/* Action Buttons */}
@@ -344,6 +392,13 @@ export default function Commesse() {
               placeholder="Note opzionali"
             />
           </Form.Item>
+          <Form.Item label="Data di consegna" name="deliveryDate">
+            <DatePicker 
+              format="DD/MM/YYYY"
+              placeholder="Seleziona data di consegna"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
           <Form.Item label="File Excel" required>
             <Upload.Dragger
               accept=".xlsx,.xls"
@@ -369,14 +424,24 @@ export default function Commesse() {
       <Card>
         <style>
           {`
-            .commesse-table .ant-table-tbody > tr:not(.editing-row):hover {
-              background-color: #f5f5f5;
+            .commesse-table .ant-table-tbody > tr.editable-row:hover {
+              background-color: #f0f7ff;
             }
-            .commesse-table .ant-table-tbody > tr:not(.editing-row) td:last-child {
-              cursor: default !important;
+            .commesse-table .ant-table-tbody > tr.editing-row {
+              background-color: #f6f6f6 !important;
             }
-            .commesse-table .ant-table-tbody > tr:not(.editing-row) td:not(:last-child) {
-              cursor: pointer;
+            .commesse-table .ant-table-tbody > tr.editable-row td:not(:last-child):not(:first-child) {
+              position: relative;
+            }
+            .commesse-table .ant-table-tbody > tr.editable-row:hover td:not(:last-child):not(:first-child)::after {
+              content: '✎';
+              position: absolute;
+              right: 8px;
+              top: 50%;
+              transform: translateY(-50%);
+              color: #1890ff;
+              font-size: 14px;
+              opacity: 0.6;
             }
           `}
         </style>
@@ -397,26 +462,26 @@ export default function Commesse() {
             loading={loading}
             rowClassName={record => isEditing(record) ? 'editing-row' : 'editable-row'}
             onRow={record => ({
-              onClick: (event) => {
-                // Non navigare se si sta cliccando sulla colonna Actions o se si è in editing
+              onDoubleClick: (event) => {
+                // Doppio click per entrare in edit mode (se non si è già in editing)
                 if (isEditing(record)) return;
                 
-                // Controlla se il click è avvenuto nella colonna Actions
+                // Non permettere doppio click su Actions column
                 const target = event.target.closest('td');
                 const actionCell = target?.querySelector('.ant-btn, .ant-popover');
                 if (actionCell || target?.classList.contains('ant-table-cell') && target.cellIndex === columns.length - 1) {
-                  return; // Non navigare se click su Actions
+                  return;
                 }
                 
-                // Naviga al dettaglio se c'è un ID valido
+                // Entra in modalità editing
                 if (record._id) {
-                  navigate(`/commesse/${record._id}`);
+                  edit(record);
                 }
               },
-              style: isEditing(record) ? { cursor: 'default', background: '#f6f6f6' } : { cursor: 'pointer' },
+              style: isEditing(record) ? { cursor: 'default', background: '#f6f6f6' } : { cursor: 'default' },
             })}
             size="middle"
-            scroll={{ x: 900 }}
+            scroll={{ x: 1100 }}
           />
         </Form>
       </Card>

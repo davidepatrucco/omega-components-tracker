@@ -79,10 +79,10 @@ const DettaglioCommessa = () => {
   };
 
   const columnsDef = [
-    { title: 'Codice Componente', dataIndex: 'descrizioneComponente', key: 'descrizioneComponente', width: 140 },
-    { title: 'Note', dataIndex: 'componentNotes', key: 'componentNotes', width: 180 },
     { title: 'Liv.', dataIndex: 'level', key: 'level', width: 70 },
     { title: 'Crit.', dataIndex: 'crit', key: 'crit', width: 70 },
+    { title: 'Codice Componente', dataIndex: 'descrizioneComponente', key: 'descrizioneComponente', width: 140 },
+    { title: 'Note', dataIndex: 'componentNotes', key: 'componentNotes', width: 180 },
     { title: 'BOM', dataIndex: 'bom_text', key: 'bom_text', width: 140 },
     { title: 'Qty U', dataIndex: 'qty_u', key: 'qty_u', width: 60 },
     { title: 'UtA U', dataIndex: 'uta_u', key: 'uta_u', width: 60 },

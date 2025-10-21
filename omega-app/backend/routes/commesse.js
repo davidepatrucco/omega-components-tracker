@@ -38,10 +38,22 @@ router.get('/:id', requireAuth, async (req, res) => {
 
 // POST /commesse - create
 router.post('/', requireAuth, async (req, res) => {
-  const { code, name, note } = req.body;
+  const { code, name, note, deliveryDate } = req.body;
   if (!code || !name) return res.status(400).json({ error: 'code and name required' });
+  
+  const commessaData = { 
+    code, 
+    name, 
+    notes: note || '' 
+  };
+  
+  // Aggiungi deliveryDate se fornita
+  if (deliveryDate) {
+    commessaData.deliveryDate = new Date(deliveryDate);
+  }
+  
   try {
-    const c = await Commessa.create({ code, name, notes: note || '' });
+    const c = await Commessa.create(commessaData);
     res.status(201).json(c);
   } catch (err) {
     if (err.code === 11000) return res.status(409).json({ error: 'code already exists' });
@@ -51,13 +63,26 @@ router.post('/', requireAuth, async (req, res) => {
 
 // PUT /commesse/:id - update
 router.put('/:id', requireAuth, async (req, res) => {
-  const { code, name, note } = req.body;
+  const { code, name, note, deliveryDate } = req.body;
   if (!code || !name) return res.status(400).json({ error: 'code and name required' });
+  
+  const updateData = { 
+    code, 
+    name, 
+    notes: note || '' 
+  };
+  
+  // Gestisci deliveryDate: se è null o undefined, rimuovi il campo
+  if (deliveryDate === null || deliveryDate === '') {
+    updateData.deliveryDate = null;
+  } else if (deliveryDate) {
+    updateData.deliveryDate = new Date(deliveryDate);
+  }
   
   try {
     const c = await Commessa.findByIdAndUpdate(
       req.params.id, 
-      { code, name, notes: note || '' },
+      updateData,
       { new: true, runValidators: true }
     );
     if (!c) return res.status(404).json({ error: 'commessa not found' });
@@ -91,8 +116,8 @@ router.post('/import-excel', requireAuth, upload.single('excel'), async (req, re
     return res.status(400).json({ error: 'File mancante' });
   }
   
-  const { code, name, note } = req.body;
-  console.log('Dati form:', { code, name, note });
+  const { code, name, note, deliveryDate } = req.body;
+  console.log('Dati form:', { code, name, note, deliveryDate });
   
   if (!code || !name) {
     console.log('Codice o nome commessa mancante');
@@ -185,11 +210,18 @@ router.post('/import-excel', requireAuth, upload.single('excel'), async (req, re
     }
     
     // CREA LA COMMESSA
-    const commessa = new Commessa({ 
+    const commessaData = { 
       code: code.trim(), 
       name: name.trim(), 
       notes: note?.trim() || 'Imported from Excel' 
-    });
+    };
+    
+    // Aggiungi deliveryDate se fornita
+    if (deliveryDate) {
+      commessaData.deliveryDate = new Date(deliveryDate);
+    }
+    
+    const commessa = new Commessa(commessaData);
     await commessa.save();
     console.log('Commessa creata:', commessa._id);
     

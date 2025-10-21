@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../api';
-import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch, DatePicker, Divider } from 'antd';
-import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch, DatePicker, Divider, Table, Segmented } from 'antd';
+import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import BarcodeWithText from '../BarcodeWithText';
 import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses } from '../utils/statusUtils';
 import { useNavigate } from 'react-router-dom';
@@ -58,6 +58,12 @@ export default function Lavorazioni(){
   // Paginazione lazy
   const [visibleCount, setVisibleCount] = useState(8);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  // Visualizzazione (card o lista)
+  const [viewMode, setViewMode] = useState(() => {
+    // Recupera la preferenza salvata o default 'card'
+    return localStorage.getItem('lavorazioni_view_mode') || 'card';
+  });
 
   // Genera statusOptions dinamicamente usando la configurazione centralizzata  
   const generateStatusOptions = (component = null) => {
@@ -344,8 +350,37 @@ export default function Lavorazioni(){
   return (
     <div>
       <Card style={{ marginBottom: 16, borderRadius: 10 }}>
-        <Typography.Title level={3} style={{ margin: 0 }}>Dashboard Lavorazioni</Typography.Title>
-        <Typography.Text type="secondary">Qui trovi lo stato delle lavorazioni e le notifiche rapide.</Typography.Text>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Typography.Title level={3} style={{ margin: 0 }}>Dashboard Lavorazioni</Typography.Title>
+            <Typography.Text type="secondary">Qui trovi lo stato delle lavorazioni e le notifiche rapide.</Typography.Text>
+          </div>
+          <Segmented
+            value={viewMode}
+            onChange={(value) => {
+              setViewMode(value);
+              localStorage.setItem('lavorazioni_view_mode', value);
+            }}
+            options={[
+              { 
+                label: 'Card', 
+                value: 'card', 
+                icon: <AppstoreOutlined /> 
+              },
+              { 
+                label: 'Lista', 
+                value: 'list', 
+                icon: <UnorderedListOutlined /> 
+              }
+            ]}
+            style={{ 
+              backgroundColor: '#fff',
+              borderRadius: 8,
+              padding: 2
+            }}
+            size="middle"
+          />
+        </div>
       </Card>
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
@@ -465,7 +500,7 @@ export default function Lavorazioni(){
             </Col>
             
             {/* Ordinamento */}
-            <Col xs={24} sm={12} md={4}>
+            <Col xs={24} sm={12} md={6}>
               <Space direction="vertical" size={4} style={{ width: '100%' }}>
                 <Text style={{ fontSize: 12, color: '#666' }}>Ordina per</Text>
                 <Space size={4}>
@@ -506,7 +541,208 @@ export default function Lavorazioni(){
           <div style={{ textAlign: 'center', padding: '50px 0', color: '#999' }}>
             <Text type="secondary">Nessuna lavorazione trovata con i filtri selezionati</Text>
           </div>
+        ) : viewMode === 'list' ? (
+          /* Visualizzazione Lista/Tabella */
+          <Card style={{ marginTop: 16 }}>
+            <Table
+              dataSource={visibleComponents}
+              rowKey="_id"
+              pagination={false}
+              size="small"
+              bordered
+              onRow={(record) => ({
+                onClick: (event) => {
+                  // Non navigare se si clicca su elementi interattivi
+                  const isInteractiveElement = event.target.closest('.ant-switch, .ant-tag, .ant-btn, .ant-select');
+                  if (!isInteractiveElement && record.commessaId) {
+                    navigate(`/commesse/${record.commessaId}`);
+                  }
+                },
+                style: { cursor: 'pointer' }
+              })}
+              columns={[
+                {
+                  title: 'Commessa',
+                  dataIndex: 'commessaCode',
+                  key: 'commessaCode',
+                  width: 140,
+                  render: (text, record) => (
+                    <div>
+                      <Text strong style={{ color: '#1677ff', fontSize: 13 }}>{text}</Text>
+                      <div style={{ fontSize: 11, color: '#666' }}>{record.commessaName}</div>
+                    </div>
+                  )
+                },
+                {
+                  title: 'Componente',
+                  dataIndex: 'descrizioneComponente',
+                  key: 'descrizioneComponente',
+                  width: 180,
+                  ellipsis: true
+                },
+                {
+                  title: 'Barcode',
+                  dataIndex: 'barcode',
+                  key: 'barcode',
+                  width: 100,
+                  render: (text) => text ? (
+                    <Tooltip title="Clicca per ingrandire">
+                      <Text 
+                        style={{ fontSize: 11, cursor: 'pointer', color: '#1677ff' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBarcodeModal({ open: true, value: text });
+                        }}
+                      >
+                        {text}
+                      </Text>
+                    </Tooltip>
+                  ) : '-'
+                },
+                {
+                  title: 'Stato',
+                  dataIndex: 'status',
+                  key: 'status',
+                  width: 160,
+                  render: (status, record) => {
+                    if (editingStatus === record._id) {
+                      return (
+                        <Form form={form} component={false}>
+                          <Form.Item name="status" style={{ margin: 0 }}>
+                            <Select 
+                              style={{ width: '100%' }}
+                              onBlur={() => saveStatusChange(record._id)}
+                              onSelect={(value) => {
+                                form.setFieldsValue({ status: value });
+                                saveStatusChange(record._id);
+                              }}
+                              autoFocus
+                              size="small"
+                            >
+                              {generateStatusOptions(record).map(option => (
+                                <Select.Option key={option.value} value={option.value}>
+                                  {option.label}
+                                </Select.Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        </Form>
+                      );
+                    }
+                    
+                    const display = formatStatusDisplay(status);
+                    return (
+                      <Tooltip title="Clicca per cambiare stato">
+                        <Tag 
+                          color={display.color} 
+                          style={{ 
+                            cursor: 'pointer',
+                            margin: 0,
+                            fontSize: 11
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editStatus(record._id);
+                          }}
+                        >
+                          {display.label}
+                        </Tag>
+                      </Tooltip>
+                    );
+                  }
+                },
+                {
+                  title: 'Trattamenti',
+                  dataIndex: 'trattamenti',
+                  key: 'trattamenti',
+                  width: 130,
+                  render: (trattamenti) => (
+                    trattamenti && trattamenti.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {trattamenti.map((t, i) => (
+                          <Tag key={i} style={{ fontSize: 10, margin: 0 }}>{t}</Tag>
+                        ))}
+                      </div>
+                    ) : '-'
+                  )
+                },
+                {
+                  title: 'Verificato',
+                  dataIndex: 'verificato',
+                  key: 'verificato',
+                  width: 100,
+                  align: 'center',
+                  render: (verificato, record) => (
+                    <Tooltip title="Clicca per cambiare">
+                      <Switch
+                        size="small"
+                        checked={verificato || false}
+                        onChange={(checked, e) => {
+                          e.stopPropagation();
+                          handleVerificatoChange(record);
+                        }}
+                        onClick={(checked, e) => e.stopPropagation()}
+                        checkedChildren="Sì"
+                        unCheckedChildren="No"
+                      />
+                    </Tooltip>
+                  )
+                },
+                {
+                  title: 'Info',
+                  key: 'actions',
+                  width: 100,
+                  align: 'center',
+                  fixed: 'right',
+                  render: (_, record) => (
+                    <Space size="small">
+                      <Tooltip title="Info complete">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<InfoCircleOutlined />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setComponentInfoModal({ open: true, component: record });
+                          }}
+                        />
+                      </Tooltip>
+                      {record.status === '6' && (
+                        <Tooltip title="Info spedizione">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<InfoCircleOutlined style={{ color: '#52c41a' }} />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShippingInfoModal({ open: true, component: record });
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Space>
+                  )
+                }
+              ]}
+              scroll={{ x: 1000 }}
+            />
+            {visibleComponents.length < filteredAndSortedComponents.length && (
+              <div style={{ textAlign: 'center', marginTop: 16 }}>
+                <Button
+                  type="primary"
+                  ghost
+                  icon={<DownOutlined />}
+                  onClick={handleLoadMore}
+                  loading={isLoadingMore}
+                  style={{ borderRadius: 20 }}
+                >
+                  Carica altri componenti ({filteredAndSortedComponents.length - visibleCount} rimanenti)
+                </Button>
+              </div>
+            )}
+          </Card>
         ) : (
+          /* Visualizzazione Card (esistente) */
           <>
             <Row gutter={[16, 16]}>
               {visibleComponents.map((comp) => (
@@ -517,9 +753,18 @@ export default function Lavorazioni(){
                     height: '100%',
                     borderRadius: 8,
                     border: '1px solid #f0f0f0',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
                   }}
                   bodyStyle={{ padding: 16 }}
+                  hoverable
+                  onClick={() => {
+                    // Naviga al dettaglio commessa
+                    if (comp.commessaId) {
+                      navigate(`/commesse/${comp.commessaId}`);
+                    }
+                  }}
                   extra={
                     <Space>
                       {/* Icona info completa */}
@@ -601,7 +846,8 @@ export default function Lavorazioni(){
                         value={comp.barcode} 
                         width={1.2} 
                         height={25} 
-                        fontSize={8} 
+                        fontSize={8}
+                        responsive={true}
                       />
                     </div>
                   )}
@@ -697,12 +943,13 @@ export default function Lavorazioni(){
         width={800}
         style={{ maxWidth: '90vw' }}
       >
-        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+        <div style={{ textAlign: 'center', padding: '20px' }}>
           <BarcodeWithText 
             value={barcodeModal.value} 
             width={3} 
             height={80} 
-            fontSize={16} 
+            fontSize={16}
+            responsive={true}
           />
         </div>
       </Modal>
