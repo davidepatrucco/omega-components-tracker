@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../api';
 import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch, DatePicker, Divider, Table, Segmented } from 'antd';
 import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
@@ -7,6 +7,104 @@ import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatus
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
+
+// Componente per header ridimensionabile
+const ResizableTitle = (props) => {
+  const { onResize, width, ...restProps } = props;
+  const thRef = useRef(null);
+
+  useEffect(() => {
+    if (!thRef.current || !width) return;
+
+    const th = thRef.current;
+    let startX = 0;
+    let startWidth = 0;
+    let isResizing = false;
+
+    const handleMouseDown = (e) => {
+      const rect = th.getBoundingClientRect();
+      const isNearRightEdge = e.clientX > rect.right - 10;
+      
+      if (!isNearRightEdge) return;
+
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = th.offsetWidth;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+
+      const handleMouseMove = (e) => {
+        if (!isResizing) return;
+        
+        const diff = e.clientX - startX;
+        const newWidth = Math.max(50, startWidth + diff);
+        
+        th.style.width = `${newWidth}px`;
+        th.style.minWidth = `${newWidth}px`;
+        th.style.maxWidth = `${newWidth}px`;
+      };
+
+      const handleMouseUp = (e) => {
+        if (!isResizing) return;
+        
+        isResizing = false;
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        
+        const diff = e.clientX - startX;
+        const finalWidth = Math.max(50, startWidth + diff);
+        
+        if (onResize) {
+          onResize(e, { size: { width: finalWidth } });
+        }
+        
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleMouseMove = (e) => {
+      if (isResizing) return;
+      
+      const rect = th.getBoundingClientRect();
+      const isNearRightEdge = e.clientX > rect.right - 10;
+      
+      th.style.cursor = isNearRightEdge ? 'col-resize' : '';
+    };
+
+    th.addEventListener('mousedown', handleMouseDown);
+    th.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      th.removeEventListener('mousedown', handleMouseDown);
+      th.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [width, onResize]);
+
+  if (!width) {
+    return <th {...restProps} />;
+  }
+
+  return (
+    <th 
+      {...restProps} 
+      ref={thRef}
+      style={{ 
+        ...restProps.style, 
+        width: `${width}px`,
+        position: 'relative',
+        minWidth: '50px'
+      }} 
+    />
+  );
+};
 
 // Funzione per determinare se lo stato richiede DDT
 const requiresDDT = (status) => {
@@ -64,6 +162,20 @@ export default function Lavorazioni(){
     // Recupera la preferenza salvata o default 'card'
     return localStorage.getItem('lavorazioni_view_mode') || 'card';
   });
+
+  // Stato per gestire le larghezze delle colonne
+  const [columnWidths, setColumnWidths] = useState(() => {
+    const saved = localStorage.getItem('lavorazioni_column_widths');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Funzione per gestire il ridimensionamento delle colonne
+  const handleResize = (dataIndex) => (e, { size }) => {
+    const widths = { ...columnWidths };
+    widths[dataIndex] = size.width;
+    setColumnWidths(widths);
+    localStorage.setItem('lavorazioni_column_widths', JSON.stringify(widths));
+  };
 
   // Genera statusOptions dinamicamente usando la configurazione centralizzata  
   const generateStatusOptions = (component = null) => {
@@ -572,6 +684,9 @@ export default function Lavorazioni(){
               pagination={false}
               size="small"
               bordered
+              components={{
+                header: { cell: ResizableTitle }
+              }}
               onRow={(record) => ({
                 onClick: (event) => {
                   // Non navigare se si clicca su elementi interattivi
@@ -587,7 +702,40 @@ export default function Lavorazioni(){
                   title: 'Commessa',
                   dataIndex: 'commessaCode',
                   key: 'commessaCode',
-                  width: 140,
+                  width: columnWidths['commessaCode'] || 140,
+                  onHeaderCell: () => ({
+                    width: columnWidths['commessaCode'] || 140,
+                    onResize: handleResize('commessaCode'),
+                  }),
+                  filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+                    <div style={{ padding: 8 }}>
+                      <Input
+                        placeholder="Cerca commessa"
+                        value={selectedKeys[0]}
+                        onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                        onPressEnter={() => confirm()}
+                        style={{ width: 188, marginBottom: 8, display: 'block' }}
+                      />
+                      <Space>
+                        <Button
+                          type="primary"
+                          onClick={() => confirm()}
+                          icon={<SearchOutlined />}
+                          size="small"
+                          style={{ width: 90 }}
+                        >
+                          Cerca
+                        </Button>
+                        <Button onClick={() => { clearFilters(); confirm(); }} size="small" style={{ width: 90 }}>
+                          Reset
+                        </Button>
+                      </Space>
+                    </div>
+                  ),
+                  filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+                  onFilter: (value, record) => 
+                    record.commessaCode?.toLowerCase().includes(value.toLowerCase()) ||
+                    record.commessaName?.toLowerCase().includes(value.toLowerCase()),
                   render: (text, record) => (
                     <div>
                       <Text strong style={{ color: '#1677ff', fontSize: 13 }}>{text}</Text>
@@ -599,33 +747,74 @@ export default function Lavorazioni(){
                   title: 'Componente',
                   dataIndex: 'descrizioneComponente',
                   key: 'descrizioneComponente',
-                  width: 180,
+                  width: columnWidths['descrizioneComponente'] || 180,
+                  onHeaderCell: () => ({
+                    width: columnWidths['descrizioneComponente'] || 180,
+                    onResize: handleResize('descrizioneComponente'),
+                  }),
+                  filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+                    <div style={{ padding: 8 }}>
+                      <Input
+                        placeholder="Cerca componente"
+                        value={selectedKeys[0]}
+                        onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                        onPressEnter={() => confirm()}
+                        style={{ width: 188, marginBottom: 8, display: 'block' }}
+                      />
+                      <Space>
+                        <Button
+                          type="primary"
+                          onClick={() => confirm()}
+                          icon={<SearchOutlined />}
+                          size="small"
+                          style={{ width: 90 }}
+                        >
+                          Cerca
+                        </Button>
+                        <Button onClick={() => { clearFilters(); confirm(); }} size="small" style={{ width: 90 }}>
+                          Reset
+                        </Button>
+                      </Space>
+                    </div>
+                  ),
+                  filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+                  onFilter: (value, record) => 
+                    record.descrizioneComponente?.toLowerCase().includes(value.toLowerCase()),
                   ellipsis: true
                 },
                 {
-                  title: 'Barcode',
-                  dataIndex: 'barcode',
-                  key: 'barcode',
-                  width: 100,
-                  render: (text) => text ? (
-                    <Tooltip title="Clicca per ingrandire">
-                      <Text 
-                        style={{ fontSize: 11, cursor: 'pointer', color: '#1677ff' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setBarcodeModal({ open: true, value: text });
-                        }}
-                      >
-                        {text}
-                      </Text>
-                    </Tooltip>
-                  ) : '-'
+                  title: 'Qty',
+                  dataIndex: 'qty_t',
+                  key: 'qty_t',
+                  width: columnWidths['qty_t'] || 80,
+                  onHeaderCell: () => ({
+                    width: columnWidths['qty_t'] || 80,
+                    onResize: handleResize('qty_t'),
+                  }),
+                  align: 'center',
+                  render: (text) => text || '-'
                 },
                 {
                   title: 'Stato',
                   dataIndex: 'status',
                   key: 'status',
-                  width: 160,
+                  width: columnWidths['status'] || 160,
+                  onHeaderCell: () => ({
+                    width: columnWidths['status'] || 160,
+                    onResize: handleResize('status'),
+                  }),
+                  filters: [
+                    { text: 'Arrivato', value: '1' },
+                    { text: 'In lavorazione interna', value: '2' },
+                    { text: 'Inviato a trattamento', value: '2-ext' },
+                    { text: 'Arrivato da trattamento', value: '2-ext:ARR' },
+                    { text: 'Lavorato', value: '3' },
+                    { text: 'Montato', value: '4' },
+                    { text: 'Pronto', value: '5' },
+                    { text: 'Spedito', value: '6' },
+                  ],
+                  onFilter: (value, record) => record.status === value,
+                  filterIcon: filtered => <FilterOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
                   render: (status, record) => {
                     if (editingStatus === record._id) {
                       return (
@@ -674,10 +863,68 @@ export default function Lavorazioni(){
                   }
                 },
                 {
+                  title: 'Type',
+                  dataIndex: 'type',
+                  key: 'type',
+                  width: columnWidths['type'] || 100,
+                  onHeaderCell: () => ({
+                    width: columnWidths['type'] || 100,
+                    onResize: handleResize('type'),
+                  }),
+                  filters: [
+                    { text: 'INT', value: 'INT' },
+                    { text: 'EST', value: 'EST' },
+                    { text: 'C/LAV', value: 'C/LAV' },
+                    { text: 'CLM', value: 'CLM' },
+                  ],
+                  onFilter: (value, record) => record.type === value,
+                  filterIcon: filtered => <FilterOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+                  align: 'center',
+                  render: (text) => text ? (
+                    <Tag color="blue" style={{ fontSize: 10 }}>{text}</Tag>
+                  ) : '-'
+                },
+                {
                   title: 'Trattamenti',
                   dataIndex: 'trattamenti',
                   key: 'trattamenti',
-                  width: 130,
+                  width: columnWidths['trattamenti'] || 130,
+                  onHeaderCell: () => ({
+                    width: columnWidths['trattamenti'] || 130,
+                    onResize: handleResize('trattamenti'),
+                  }),
+                  filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+                    <div style={{ padding: 8 }}>
+                      <Input
+                        placeholder="Cerca trattamento"
+                        value={selectedKeys[0]}
+                        onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                        onPressEnter={() => confirm()}
+                        style={{ width: 188, marginBottom: 8, display: 'block' }}
+                      />
+                      <Space>
+                        <Button
+                          type="primary"
+                          onClick={() => confirm()}
+                          icon={<SearchOutlined />}
+                          size="small"
+                          style={{ width: 90 }}
+                        >
+                          Cerca
+                        </Button>
+                        <Button onClick={() => { clearFilters(); confirm(); }} size="small" style={{ width: 90 }}>
+                          Reset
+                        </Button>
+                      </Space>
+                    </div>
+                  ),
+                  filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+                  onFilter: (value, record) => {
+                    if (!record.trattamenti || !Array.isArray(record.trattamenti)) return false;
+                    return record.trattamenti.some(t => 
+                      t?.toLowerCase().includes(value.toLowerCase())
+                    );
+                  },
                   render: (trattamenti) => (
                     trattamenti && trattamenti.length > 0 ? (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -689,10 +936,70 @@ export default function Lavorazioni(){
                   )
                 },
                 {
+                  title: 'Fornitore Tratt.',
+                  dataIndex: 'fornitoreTrattamenti',
+                  key: 'fornitoreTrattamenti',
+                  width: columnWidths['fornitoreTrattamenti'] || 150,
+                  onHeaderCell: () => ({
+                    width: columnWidths['fornitoreTrattamenti'] || 150,
+                    onResize: handleResize('fornitoreTrattamenti'),
+                  }),
+                  filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+                    <div style={{ padding: 8 }}>
+                      <Input
+                        placeholder="Cerca fornitore"
+                        value={selectedKeys[0]}
+                        onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                        onPressEnter={() => confirm()}
+                        style={{ width: 188, marginBottom: 8, display: 'block' }}
+                      />
+                      <Space>
+                        <Button
+                          type="primary"
+                          onClick={() => confirm()}
+                          icon={<SearchOutlined />}
+                          size="small"
+                          style={{ width: 90 }}
+                        >
+                          Cerca
+                        </Button>
+                        <Button onClick={() => { clearFilters(); confirm(); }} size="small" style={{ width: 90 }}>
+                          Reset
+                        </Button>
+                      </Space>
+                    </div>
+                  ),
+                  filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+                  onFilter: (value, record) => 
+                    record.fornitoreTrattamenti?.toLowerCase().includes(value.toLowerCase()),
+                  render: (text) => text || '-'
+                },
+                {
+                  title: 'DDT Tratt.',
+                  dataIndex: 'ddt',
+                  key: 'ddt',
+                  width: columnWidths['ddt'] || 120,
+                  onHeaderCell: () => ({
+                    width: columnWidths['ddt'] || 120,
+                    onResize: handleResize('ddt'),
+                  }),
+                  render: (text) => text || '-'
+                },
+                {
                   title: 'Verificato',
                   dataIndex: 'verificato',
                   key: 'verificato',
-                  width: 100,
+                  width: columnWidths['verificato'] || 100,
+                  onHeaderCell: () => ({
+                    width: columnWidths['verificato'] || 100,
+                    onResize: handleResize('verificato'),
+                  }),
+                  filters: [
+                    { text: 'Verificato', value: true },
+                    { text: 'Da verificare', value: false },
+                  ],
+                  onFilter: (value, record) => record.verificato === value,
+                  filterIcon: filtered => <FilterOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
                   align: 'center',
                   render: (verificato, record) => (
                     <Tooltip title="Clicca per cambiare">
@@ -711,9 +1018,36 @@ export default function Lavorazioni(){
                   )
                 },
                 {
+                  title: 'Barcode',
+                  dataIndex: 'barcode',
+                  key: 'barcode',
+                  width: columnWidths['barcode'] || 120,
+                  onHeaderCell: () => ({
+                    width: columnWidths['barcode'] || 120,
+                    onResize: handleResize('barcode'),
+                  }),
+                  render: (text) => text ? (
+                    <Tooltip title="Clicca per ingrandire">
+                      <Text 
+                        style={{ fontSize: 11, cursor: 'pointer', color: '#1677ff' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBarcodeModal({ open: true, value: text });
+                        }}
+                      >
+                        {text}
+                      </Text>
+                    </Tooltip>
+                  ) : '-'
+                },
+                {
                   title: 'Info',
                   key: 'actions',
-                  width: 100,
+                  width: columnWidths['actions'] || 100,
+                  onHeaderCell: () => ({
+                    width: columnWidths['actions'] || 100,
+                    onResize: handleResize('actions'),
+                  }),
                   align: 'center',
                   fixed: 'right',
                   render: (_, record) => (
@@ -746,7 +1080,7 @@ export default function Lavorazioni(){
                   )
                 }
               ]}
-              scroll={{ x: 1000 }}
+              scroll={{ x: 1600 }}
             />
             {visibleComponents.length < filteredAndSortedComponents.length && (
               <div style={{ textAlign: 'center', marginTop: 16 }}>

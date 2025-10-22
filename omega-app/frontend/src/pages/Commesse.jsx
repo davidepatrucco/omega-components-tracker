@@ -1,11 +1,109 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Table, Button, Input, Form, Popconfirm, message, Space, Tooltip, Modal, Upload, Progress, Typography, Card, DatePicker } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, CloseOutlined, UploadOutlined, InfoCircleOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, CloseOutlined, UploadOutlined, InfoCircleOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import { api } from '../api';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
+
+// Componente per header ridimensionabile
+const ResizableTitle = (props) => {
+  const { onResize, width, ...restProps } = props;
+  const thRef = useRef(null);
+
+  useEffect(() => {
+    if (!thRef.current || !width) return;
+
+    const th = thRef.current;
+    let startX = 0;
+    let startWidth = 0;
+    let isResizing = false;
+
+    const handleMouseDown = (e) => {
+      const rect = th.getBoundingClientRect();
+      const isNearRightEdge = e.clientX > rect.right - 10;
+      
+      if (!isNearRightEdge) return;
+
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = th.offsetWidth;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+
+      const handleMouseMove = (e) => {
+        if (!isResizing) return;
+        
+        const diff = e.clientX - startX;
+        const newWidth = Math.max(50, startWidth + diff);
+        
+        th.style.width = `${newWidth}px`;
+        th.style.minWidth = `${newWidth}px`;
+        th.style.maxWidth = `${newWidth}px`;
+      };
+
+      const handleMouseUp = (e) => {
+        if (!isResizing) return;
+        
+        isResizing = false;
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        
+        const diff = e.clientX - startX;
+        const finalWidth = Math.max(50, startWidth + diff);
+        
+        if (onResize) {
+          onResize(e, { size: { width: finalWidth } });
+        }
+        
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleMouseMove = (e) => {
+      if (isResizing) return;
+      
+      const rect = th.getBoundingClientRect();
+      const isNearRightEdge = e.clientX > rect.right - 10;
+      
+      th.style.cursor = isNearRightEdge ? 'col-resize' : '';
+    };
+
+    th.addEventListener('mousedown', handleMouseDown);
+    th.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      th.removeEventListener('mousedown', handleMouseDown);
+      th.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [width, onResize]);
+
+  if (!width) {
+    return <th {...restProps} />;
+  }
+
+  return (
+    <th 
+      {...restProps} 
+      ref={thRef}
+      style={{ 
+        ...restProps.style, 
+        width: `${width}px`,
+        position: 'relative',
+        minWidth: '50px'
+      }} 
+    />
+  );
+};
 
 const columnsDef = [
   { title: 'Codice', dataIndex: 'code', key: 'code', width: 120, editable: true, sorter: (a, b) => a.code.localeCompare(b.code), sortDirections: ['ascend', 'descend'], filtered: true, filterSearch: true },
@@ -34,6 +132,20 @@ export default function Commesse() {
   const [formUpload] = Form.useForm();
   const [fileList, setFileList] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Stato per gestire le larghezze delle colonne
+  const [columnWidths, setColumnWidths] = useState(() => {
+    const saved = localStorage.getItem('commesse_column_widths');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Funzione per gestire il ridimensionamento delle colonne
+  const handleResize = (dataIndex) => (e, { size }) => {
+    const widths = { ...columnWidths };
+    widths[dataIndex] = size.width;
+    setColumnWidths(widths);
+    localStorage.setItem('commesse_column_widths', JSON.stringify(widths));
+  };
 
   const navigate = useNavigate();
 
@@ -174,7 +286,11 @@ export default function Commesse() {
     {
       title: '',
       key: 'detail',
-      width: 20,
+      width: columnWidths['detail'] || 60,
+      onHeaderCell: () => ({
+        width: columnWidths['detail'] || 60,
+        onResize: handleResize('detail'),
+      }),
       render: (_, record) => {
         if (isEditing(record)) return null;
         return (
@@ -195,10 +311,16 @@ export default function Commesse() {
     },
     ...columnsDef.map(col => ({
       ...col,
+      width: columnWidths[col.dataIndex] || col.width,
+      onHeaderCell: () => ({
+        width: columnWidths[col.dataIndex] || col.width,
+        onResize: handleResize(col.dataIndex),
+      }),
       sorter: col.sorter,
       sortDirections: col.sortDirections,
       ...(col.filtered ? {
         filterSearch: true,
+        filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
         onFilter: (value, record) => (record[col.dataIndex] || '').toLowerCase().includes(value.toLowerCase()),
         filters: Array.isArray(commesse) ? Array.from(new Set(commesse.map(c => c[col.dataIndex]).filter(Boolean))).map(val => ({ text: val, value: val })) : [],
       } : {})
@@ -206,7 +328,11 @@ export default function Commesse() {
     {
       title: 'Azioni',
       key: 'actions',
-      width: 10,
+      width: columnWidths['actions'] || 120,
+      onHeaderCell: () => ({
+        width: columnWidths['actions'] || 120,
+        onResize: handleResize('actions'),
+      }),
       render: (_, record) => {
         const editable = isEditing(record);
         return (
@@ -448,7 +574,10 @@ export default function Commesse() {
         <Form form={form} component={false}>
           <Table
             className="commesse-table"
-            components={{ body: { cell: EditableCell } }}
+            components={{ 
+              body: { cell: EditableCell },
+              header: { cell: ResizableTitle }
+            }}
             bordered
             dataSource={dataSourceForTable}
             columns={mergedColumns}

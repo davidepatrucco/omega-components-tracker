@@ -1,0 +1,25 @@
+/* Stili per colonne ridimensionabili nelle tabelle */
+th {
+  position: relative;
+  user-select: none;
+}
+
+/* Cursore quando si è vicini al bordo destro di una colonna */
+th:hover {
+  cursor: default;
+}
+
+/* Word wrap per celle della tabella */
+.ant-table-cell {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal !important;
+  overflow-wrap: break-word;
+}
+
+/* Assicura che il contenuto delle celle si adatti alla larghezza */
+.ant-table-cell > * {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}

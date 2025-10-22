@@ -31,7 +31,9 @@ import {
   PlusOutlined,
   InfoCircleOutlined,
   EyeOutlined,
-  SettingOutlined
+  SettingOutlined,
+  SearchOutlined,
+  FilterOutlined
 } from '@ant-design/icons';
 import BarcodeWithText from '../BarcodeWithText';
 import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses } from '../utils/statusUtils';
@@ -39,6 +41,108 @@ import { api } from '../api';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
+
+// Componente per header ridimensionabile con drag nativo
+const ResizableTitle = (props) => {
+  const { onResize, width, ...restProps } = props;
+  const thRef = useRef(null);
+
+  useEffect(() => {
+    if (!thRef.current || !width) return;
+
+    const th = thRef.current;
+    let startX = 0;
+    let startWidth = 0;
+    let isResizing = false;
+
+    const handleMouseDown = (e) => {
+      // Verifica se il click è vicino al bordo destro (ultimi 10px)
+      const rect = th.getBoundingClientRect();
+      const isNearRightEdge = e.clientX > rect.right - 10;
+      
+      if (!isNearRightEdge) return;
+
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = th.offsetWidth;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Previeni selezione testo
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+
+      const handleMouseMove = (e) => {
+        if (!isResizing) return;
+        
+        const diff = e.clientX - startX;
+        const newWidth = Math.max(50, startWidth + diff); // Minimo 50px
+        
+        // Aggiorna IMMEDIATAMENTE la larghezza visiva
+        th.style.width = `${newWidth}px`;
+        th.style.minWidth = `${newWidth}px`;
+        th.style.maxWidth = `${newWidth}px`;
+      };
+
+      const handleMouseUp = (e) => {
+        if (!isResizing) return;
+        
+        isResizing = false;
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        
+        // Solo alla fine del drag, salva la larghezza finale
+        const diff = e.clientX - startX;
+        const finalWidth = Math.max(50, startWidth + diff);
+        
+        if (onResize) {
+          onResize(e, { size: { width: finalWidth } });
+        }
+        
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleMouseMove = (e) => {
+      if (isResizing) return;
+      
+      const rect = th.getBoundingClientRect();
+      const isNearRightEdge = e.clientX > rect.right - 10;
+      
+      th.style.cursor = isNearRightEdge ? 'col-resize' : '';
+    };
+
+    th.addEventListener('mousedown', handleMouseDown);
+    th.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      th.removeEventListener('mousedown', handleMouseDown);
+      th.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [width, onResize]);
+
+  if (!width) {
+    return <th {...restProps} />;
+  }
+
+  return (
+    <th 
+      {...restProps} 
+      ref={thRef}
+      style={{ 
+        ...restProps.style, 
+        width: `${width}px`,
+        position: 'relative',
+        minWidth: '50px'
+      }} 
+    />
+  );
+};
 
 const DettaglioCommessa = () => {
   const { id } = useParams();
@@ -68,6 +172,12 @@ const DettaglioCommessa = () => {
     // Carica preferenze da localStorage o usa default
     const saved = localStorage.getItem('dettaglio_commessa_hidden_columns');
     return saved ? JSON.parse(saved) : ['bom_text', 'qty_u', 'uta_u', 'uta_t'];
+  });
+
+  // Stato per gestire le larghezze delle colonne
+  const [columnWidths, setColumnWidths] = useState(() => {
+    const saved = localStorage.getItem('dettaglio_commessa_column_widths');
+    return saved ? JSON.parse(saved) : {};
   });
 
   // Genera statusOptions dinamicamente usando la configurazione centralizzata  
@@ -101,8 +211,11 @@ const DettaglioCommessa = () => {
     { title: 'UtA U', dataIndex: 'uta_u', key: 'uta_u', width: 60 },
     { title: 'Qty T', dataIndex: 'qty_t', key: 'qty_t', width: 60 },
     { title: 'UtA T', dataIndex: 'uta_t', key: 'uta_t', width: 60 },
-    { title: 'Trattamenti', dataIndex: 'trattamenti', key: 'trattamenti', width: 120 },
+    { title: 'MAG - Note', dataIndex: 'mag', key: 'mag', width: 150 },
     { title: 'Stato', dataIndex: 'status', key: 'status', width: 110 },
+    { title: 'Type', dataIndex: 'type', key: 'type', width: 90 },
+    { title: 'Trattamenti', dataIndex: 'trattamenti', key: 'trattamenti', width: 120 },
+    { title: 'Fornitore Tratt.', dataIndex: 'fornitoreTrattamenti', key: 'fornitoreTrattamenti', width: 150 },
     { title: 'Verificato', dataIndex: 'verificato', key: 'verificato', width: 90 },
     { title: 'Barcode', dataIndex: 'barcode', key: 'barcode', width: 80 },
     { title: 'Azioni', dataIndex: 'actions', key: 'actions', width: 80 }
@@ -317,6 +430,14 @@ const DettaglioCommessa = () => {
     return status === '6' || (status && status.includes(':ARR'));
   };
 
+  // Funzione per gestire il ridimensionamento delle colonne
+  const handleResize = (dataIndex) => (e, { size }) => {
+    const widths = { ...columnWidths };
+    widths[dataIndex] = size.width;
+    setColumnWidths(widths);
+    localStorage.setItem('dettaglio_commessa_column_widths', JSON.stringify(widths));
+  };
+
   // Funzione per toggleare la visibilità di una colonna
   const toggleColumnVisibility = (columnKey) => {
     setHiddenColumns(prev => {
@@ -358,7 +479,10 @@ const DettaglioCommessa = () => {
       uta_u: 'PC',
       qty_t: 1,
       uta_t: 'PC',
+      mag: '',
+      type: '',
       trattamenti: [],
+      fornitoreTrattamenti: '',
       status: '1',
       verificato: false,
       barcode: ''
@@ -386,10 +510,51 @@ const DettaglioCommessa = () => {
 
   const columns = columnsDef
     .filter(col => !hiddenColumns.includes(col.dataIndex)) // Filtra le colonne nascoste
-    .map((col) => {
+    .map((col, index) => {
+    // Applica la larghezza salvata o usa quella di default
+    const width = columnWidths[col.dataIndex] || col.width;
+    
+    // Proprietà comuni a tutte le colonne per il resize
+    const commonProps = {
+      ...col,
+      width,
+      onHeaderCell: () => ({
+        width,
+        onResize: handleResize(col.dataIndex),
+      }),
+    };
+    
     if (col.dataIndex === 'descrizioneComponente') {
       return {
-        ...col,
+        ...commonProps,
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Cerca codice componente"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Cerca
+              </Button>
+              <Button onClick={() => { clearFilters(); confirm(); }} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+        onFilter: (value, record) => 
+          record.descrizioneComponente?.toLowerCase().includes(value.toLowerCase()),
         render: (text, record) => (
           <div style={{ fontWeight: 500 }}>{text}</div>
         ),
@@ -406,7 +571,42 @@ const DettaglioCommessa = () => {
 
     if (col.dataIndex === 'trattamenti') {
       return {
-        ...col,
+        ...commonProps,
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Cerca trattamento"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Cerca
+              </Button>
+              <Button onClick={() => { clearFilters(); confirm(); }} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+        onFilter: (value, record) => {
+          if (!record.trattamenti) return false;
+          if (Array.isArray(record.trattamenti)) {
+            return record.trattamenti.some(t => 
+              t?.toLowerCase().includes(value.toLowerCase())
+            );
+          }
+          return record.trattamenti.toLowerCase().includes(value.toLowerCase());
+        },
         render: (text, record) => {
           if (Array.isArray(text) && text.length > 0) {
             return (
@@ -436,7 +636,19 @@ const DettaglioCommessa = () => {
 
     if (col.dataIndex === 'status') {
       return {
-        ...col,
+        ...commonProps,
+        filters: [
+          { text: 'Arrivato', value: '1' },
+          { text: 'In lavorazione interna', value: '2' },
+          { text: 'Inviato a trattamento', value: '2-ext' },
+          { text: 'Arrivato da trattamento', value: '2-ext:ARR' },
+          { text: 'Lavorato', value: '3' },
+          { text: 'Montato', value: '4' },
+          { text: 'Pronto', value: '5' },
+          { text: 'Spedito', value: '6' },
+        ],
+        onFilter: (value, record) => record.status === value,
+        filterIcon: filtered => <FilterOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
         render: (text, record) => (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Tag color={getStatusColor(text)}>
@@ -469,7 +681,13 @@ const DettaglioCommessa = () => {
 
     if (col.dataIndex === 'verificato') {
       return {
-        ...col,
+        ...commonProps,
+        filters: [
+          { text: 'Verificato', value: true },
+          { text: 'Da verificare', value: false },
+        ],
+        onFilter: (value, record) => record.verificato === value,
+        filterIcon: filtered => <FilterOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
         render: (text, record) => (
           <Tag color={text ? 'green' : 'orange'}>
             {text ? 'Verificato' : 'Da verificare'}
@@ -487,7 +705,7 @@ const DettaglioCommessa = () => {
 
     if (col.dataIndex === 'barcode') {
       return {
-        ...col,
+        ...commonProps,
         render: (text, record) => {
           if (!text) return '-';
           return (
@@ -508,7 +726,7 @@ const DettaglioCommessa = () => {
 
     if (col.dataIndex === 'actions') {
       return {
-        ...col,
+        ...commonProps,
         render: (text, record) => {
           const editable = isEditing(record);
           return (
@@ -577,8 +795,84 @@ const DettaglioCommessa = () => {
       };
     }
 
+    // Aggiungi filtri per colonne specifiche
+    const filters = {};
+    if (col.dataIndex === 'type') {
+      filters.filters = [
+        { text: 'INT', value: 'INT' },
+        { text: 'EST', value: 'EST' },
+        { text: 'C/LAV', value: 'C/LAV' },
+        { text: 'CLM', value: 'CLM' },
+      ];
+      filters.onFilter = (value, record) => record.type === value;
+      filters.filterIcon = filtered => <FilterOutlined style={{ color: filtered ? '#1890ff' : undefined }} />;
+    }
+    
+    if (col.dataIndex === 'fornitoreTrattamenti') {
+      filters.filterDropdown = ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="Cerca fornitore"
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => confirm()}
+              icon={<SearchOutlined />}
+              size="small"
+              style={{ width: 90 }}
+            >
+              Cerca
+            </Button>
+            <Button onClick={() => { clearFilters(); confirm(); }} size="small" style={{ width: 90 }}>
+              Reset
+            </Button>
+          </Space>
+        </div>
+      );
+      filters.filterIcon = filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />;
+      filters.onFilter = (value, record) => 
+        record.fornitoreTrattamenti?.toLowerCase().includes(value.toLowerCase());
+    }
+    
+    if (col.dataIndex === 'componentNotes') {
+      filters.filterDropdown = ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="Cerca descrizione"
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => confirm()}
+              icon={<SearchOutlined />}
+              size="small"
+              style={{ width: 90 }}
+            >
+              Cerca
+            </Button>
+            <Button onClick={() => { clearFilters(); confirm(); }} size="small" style={{ width: 90 }}>
+              Reset
+            </Button>
+          </Space>
+        </div>
+      );
+      filters.filterIcon = filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />;
+      filters.onFilter = (value, record) => 
+        record.componentNotes?.toLowerCase().includes(value.toLowerCase());
+    }
+
     return {
-      ...col,
+      ...commonProps,
+      ...filters,
       onCell: (record) => ({
         record,
         inputType: col.dataIndex === 'qty_u' || col.dataIndex === 'qty_t' ? 'number' : 'text',
@@ -623,6 +917,21 @@ const DettaglioCommessa = () => {
         inputNode = <Switch checkedChildren="Sì" unCheckedChildren="No" />;
       } else if (inputType === 'number') {
         inputNode = <Input type="number" min="0" style={{ minWidth: 60 }} />;
+      } else if (dataIndex === 'type') {
+        // Gestione campo Type con select
+        inputNode = (
+          <Select
+            style={{ minWidth: 90 }}
+            placeholder="Seleziona tipo"
+            allowClear
+            options={[
+              { label: 'INT', value: 'INT' },
+              { label: 'EST', value: 'EST' },
+              { label: 'C/LAV', value: 'C/LAV' },
+              { label: 'CLM', value: 'CLM' }
+            ]}
+          />
+        );
       } else if (dataIndex === 'trattamenti') {
         // Gestione speciale per i trattamenti con tag e suggerimenti
         inputNode = (
@@ -794,7 +1103,10 @@ const DettaglioCommessa = () => {
 
         <Form form={form} component={false}>
           <Table
-            components={{ body: { cell: EditableCell } }}
+            components={{ 
+              body: { cell: EditableCell },
+              header: { cell: ResizableTitle }
+            }}
             bordered
             dataSource={components}
             columns={columns}
