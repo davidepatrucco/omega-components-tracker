@@ -9,7 +9,7 @@ const { Title, Text } = Typography;
 
 const columnsDef = [
   { title: 'Codice', dataIndex: 'code', key: 'code', width: 120, editable: true, sorter: (a, b) => a.code.localeCompare(b.code), sortDirections: ['ascend', 'descend'], filtered: true, filterSearch: true },
-  { title: 'Nome', dataIndex: 'name', key: 'name', width: 180, editable: true, sorter: (a, b) => a.name.localeCompare(b.name), sortDirections: ['ascend', 'descend'], filtered: true, filterSearch: true },
+  { title: 'Cliente', dataIndex: 'name', key: 'name', width: 180, editable: true, sorter: (a, b) => a.name.localeCompare(b.name), sortDirections: ['ascend', 'descend'], filtered: true, filterSearch: true },
   { title: 'Note', dataIndex: 'notes', key: 'notes', width: 200, editable: true, sorter: (a, b) => (a.notes || '').localeCompare(b.notes || ''), sortDirections: ['ascend', 'descend'], filtered: true, filterSearch: true },
   { title: 'Data di consegna', dataIndex: 'deliveryDate', key: 'deliveryDate', width: 160, 
     render: t => t ? dayjs(t).format('DD/MM/YYYY') : '-', 
@@ -376,13 +376,13 @@ export default function Commesse() {
             />
           </Form.Item>
           <Form.Item 
-            label="Nome commessa" 
+            label="Cliente" 
             name="name"
-            rules={[{ required: true, message: 'Inserisci il nome commessa' }]}
+            rules={[{ required: true, message: 'Inserisci il nome del cliente' }]}
           >
             <Input 
               autoComplete="off" 
-              placeholder="Inserisci nome commessa"
+              placeholder="Inserisci nome cliente"
             />
           </Form.Item>
           <Form.Item label="Note" name="note">

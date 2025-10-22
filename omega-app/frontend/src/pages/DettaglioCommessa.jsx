@@ -17,7 +17,9 @@ import {
   Spin,
   Divider,
   Switch,
-  Timeline
+  Timeline,
+  Dropdown,
+  Checkbox
 } from 'antd';
 import { 
   ArrowLeftOutlined, 
@@ -27,11 +29,14 @@ import {
   CloseOutlined, 
   HistoryOutlined, 
   PlusOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  EyeOutlined,
+  SettingOutlined
 } from '@ant-design/icons';
 import BarcodeWithText from '../BarcodeWithText';
 import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses } from '../utils/statusUtils';
 import { api } from '../api';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -57,6 +62,13 @@ const DettaglioCommessa = () => {
   const [statusChangeForm] = Form.useForm();
   const [historyModal, setHistoryModal] = useState({ open: false, component: null });
   const [detailsModal, setDetailsModal] = useState({ open: false, component: null });
+  
+  // Stato per gestire le colonne visibili
+  const [hiddenColumns, setHiddenColumns] = useState(() => {
+    // Carica preferenze da localStorage o usa default
+    const saved = localStorage.getItem('dettaglio_commessa_hidden_columns');
+    return saved ? JSON.parse(saved) : ['bom_text', 'qty_u', 'uta_u', 'uta_t'];
+  });
 
   // Genera statusOptions dinamicamente usando la configurazione centralizzata  
   const generateStatusOptions = (component = null) => {
@@ -83,7 +95,7 @@ const DettaglioCommessa = () => {
     { title: 'Liv.', dataIndex: 'level', key: 'level', width: 70 },
     { title: 'Crit.', dataIndex: 'crit', key: 'crit', width: 70 },
     { title: 'Codice Componente', dataIndex: 'descrizioneComponente', key: 'descrizioneComponente', width: 140 },
-    { title: 'Note', dataIndex: 'componentNotes', key: 'componentNotes', width: 180 },
+    { title: 'Descrizione', dataIndex: 'componentNotes', key: 'componentNotes', width: 180 },
     { title: 'BOM', dataIndex: 'bom_text', key: 'bom_text', width: 140 },
     { title: 'Qty U', dataIndex: 'qty_u', key: 'qty_u', width: 60 },
     { title: 'UtA U', dataIndex: 'uta_u', key: 'uta_u', width: 60 },
@@ -303,7 +315,22 @@ const DettaglioCommessa = () => {
   const requiresShippingInfo = (status) => {
     // Stati che mostrano informazioni sulla spedizione: "Spedito" e "Arrivato da trattamento"
     return status === '6' || (status && status.includes(':ARR'));
-  };  const handleDelete = async (key) => {
+  };
+
+  // Funzione per toggleare la visibilità di una colonna
+  const toggleColumnVisibility = (columnKey) => {
+    setHiddenColumns(prev => {
+      const newHidden = prev.includes(columnKey)
+        ? prev.filter(k => k !== columnKey)
+        : [...prev, columnKey];
+      
+      // Salva in localStorage
+      localStorage.setItem('dettaglio_commessa_hidden_columns', JSON.stringify(newHidden));
+      return newHidden;
+    });
+  };
+
+  const handleDelete = async (key) => {
     try {
       const response = await api.delete(`/api/components/${key}`);
       
@@ -357,7 +384,9 @@ const DettaglioCommessa = () => {
     return colorMap[statusDisplay.color] || 'default';
   };
 
-  const columns = columnsDef.map((col) => {
+  const columns = columnsDef
+    .filter(col => !hiddenColumns.includes(col.dataIndex)) // Filtra le colonne nascoste
+    .map((col) => {
     if (col.dataIndex === 'descrizioneComponente') {
       return {
         ...col,
@@ -653,12 +682,16 @@ const DettaglioCommessa = () => {
                 <div>{commessa.code}</div>
               </div>
               <div>
-                <Text strong>Nome:</Text>
+                <Text strong>Cliente:</Text>
                 <div>{commessa.name}</div>
               </div>
               <div>
                 <Text strong>Note:</Text>
                 <div>{commessa.notes || '-'}</div>
+              </div>
+              <div>
+                <Text strong>Data di consegna:</Text>
+                <div>{commessa.deliveryDate ? dayjs(commessa.deliveryDate).format('DD/MM/YYYY') : '-'}</div>
               </div>
               <div>
                 <Text strong>Data creazione:</Text>
@@ -670,14 +703,93 @@ const DettaglioCommessa = () => {
 
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Title level={3}>Componenti ({components.length})</Title>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />}
-            onClick={addNewComponent}
-            disabled={adding}
-          >
-            Nuovo Componente
-          </Button>
+          <Space>
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'bom_text',
+                    label: (
+                      <Checkbox
+                        checked={!hiddenColumns.includes('bom_text')}
+                        onChange={() => toggleColumnVisibility('bom_text')}
+                      >
+                        BOM
+                      </Checkbox>
+                    )
+                  },
+                  {
+                    key: 'qty_u',
+                    label: (
+                      <Checkbox
+                        checked={!hiddenColumns.includes('qty_u')}
+                        onChange={() => toggleColumnVisibility('qty_u')}
+                      >
+                        Qty U
+                      </Checkbox>
+                    )
+                  },
+                  {
+                    key: 'uta_u',
+                    label: (
+                      <Checkbox
+                        checked={!hiddenColumns.includes('uta_u')}
+                        onChange={() => toggleColumnVisibility('uta_u')}
+                      >
+                        UtA U
+                      </Checkbox>
+                    )
+                  },
+                  {
+                    key: 'qty_t',
+                    label: (
+                      <Checkbox
+                        checked={!hiddenColumns.includes('qty_t')}
+                        onChange={() => toggleColumnVisibility('qty_t')}
+                      >
+                        Qty T
+                      </Checkbox>
+                    )
+                  },
+                  {
+                    key: 'uta_t',
+                    label: (
+                      <Checkbox
+                        checked={!hiddenColumns.includes('uta_t')}
+                        onChange={() => toggleColumnVisibility('uta_t')}
+                      >
+                        UtA T
+                      </Checkbox>
+                    )
+                  },
+                  {
+                    key: 'barcode',
+                    label: (
+                      <Checkbox
+                        checked={!hiddenColumns.includes('barcode')}
+                        onChange={() => toggleColumnVisibility('barcode')}
+                      >
+                        Barcode
+                      </Checkbox>
+                    )
+                  }
+                ]
+              }}
+              trigger={['click']}
+            >
+              <Button icon={<SettingOutlined />}>
+                Colonne
+              </Button>
+            </Dropdown>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={addNewComponent}
+              disabled={adding}
+            >
+              Nuovo Componente
+            </Button>
+          </Space>
         </div>
 
         <Form form={form} component={false}>
