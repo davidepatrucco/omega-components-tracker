@@ -10,6 +10,7 @@ import GestioneUtenti from './pages/GestioneUtenti';
 import Notifiche from './pages/Notifiche';
 import ViewFiles from './pages/ViewFiles';
 import AnagraficaTrattamenti from './pages/AnagraficaTrattamenti';
+import Reporting from './pages/Reporting';
 
 export default function App(){
   return (
@@ -22,7 +23,7 @@ export default function App(){
             <Route path="commesse" element={<Commesse />} />
             <Route path="commesse/:id" element={<DettaglioCommessa />} />
             <Route path="notifiche" element={<Notifiche />} />
-            <Route path="report" element={<div>Reporting (placeholder)</div>} />
+            <Route path="report" element={<Reporting />} />
             <Route path="utenti" element={<GestioneUtenti />} />
             <Route path="files" element={<ViewFiles />} />
             <Route path="anagrafiche/trattamenti" element={<AnagraficaTrattamenti />} />

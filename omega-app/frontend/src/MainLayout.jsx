@@ -37,8 +37,8 @@ const menuItems = [
     { key: 'files', icon: <CloudOutlined />, label: <Link to="/files">Vedi Files</Link> },
     { 
         key: 'report', 
-        icon: <PieChartOutlined style={{ color: '#b0b0b0' }} />, 
-        label: <span style={{ color: '#b0b0b0', pointerEvents: 'none', cursor: 'not-allowed' }}>Reporting</span> 
+        icon: <PieChartOutlined />, 
+        label: <Link to="/report">Reporting</Link> 
     },
 ];
 

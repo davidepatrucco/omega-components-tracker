@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../api';
 import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch, DatePicker, Divider, Table, Segmented } from 'antd';
-import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined, AppstoreOutlined, UnorderedListOutlined, SaveOutlined } from '@ant-design/icons';
 import BarcodeWithText from '../BarcodeWithText';
 import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses } from '../utils/statusUtils';
 import { useNavigate } from 'react-router-dom';
@@ -156,6 +156,14 @@ export default function Lavorazioni(){
   // Paginazione lazy
   const [visibleCount, setVisibleCount] = useState(8);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Save Report state
+  const [saveReportModalOpen, setSaveReportModalOpen] = useState(false);
+  const [newReportName, setNewReportName] = useState('');
+  const [savingReport, setSavingReport] = useState(false);
+  
+  // Table filters state (for Ant Design table filters)
+  const [tableFilters, setTableFilters] = useState({});
   
   // Visualizzazione (card o lista)
   const [viewMode, setViewMode] = useState(() => {
@@ -465,8 +473,71 @@ export default function Lavorazioni(){
   }, []);
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    console.log(`Filter change: ${key} = ${value}`);
+    setFilters(prev => {
+      const newFilters = { ...prev, [key]: value };
+      console.log('New filters state:', newFilters);
+      return newFilters;
+    });
     setVisibleCount(8); // Reset pagination
+  };
+
+  const generateDefaultReportName = () => {
+    const parts = [];
+    
+    // Check table filters instead of filters state
+    if (tableFilters.commessaCode && tableFilters.commessaCode.length > 0) {
+      parts.push(`Commessa: ${tableFilters.commessaCode[0]}`);
+    }
+    if (tableFilters.descrizioneComponente && tableFilters.descrizioneComponente.length > 0) {
+      parts.push(`Desc: ${tableFilters.descrizioneComponente[0]}`);
+    }
+    if (tableFilters.status && tableFilters.status.length > 0) {
+      parts.push(`Stato: ${getStatusLabel(tableFilters.status[0])}`);
+    }
+    if (tableFilters.trattamenti && tableFilters.trattamenti.length > 0) {
+      parts.push(`Tratt: ${tableFilters.trattamenti[0]}`);
+    }
+    if (tableFilters.verificato && tableFilters.verificato.length > 0) {
+      parts.push(`Verif: ${tableFilters.verificato[0] ? 'Sì' : 'No'}`);
+    }
+    
+    const base = parts.length ? parts.join(' | ') : 'Tutti';
+    const date = new Date().toISOString().slice(0,10);
+    return `Report - ${base} - ${date}`;
+  };
+
+  const openSaveReportModal = () => {
+    console.log('Opening save report modal. Current table filters:', tableFilters);
+    setNewReportName(generateDefaultReportName());
+    setSaveReportModalOpen(true);
+  };
+
+  const handleSaveReport = async () => {
+    try {
+      if (!newReportName || newReportName.trim().length === 0) {
+        message.error('Inserire un nome per il report');
+        return;
+      }
+      setSavingReport(true);
+      
+      // Save table filters instead of filters state
+      console.log('Saving report with table filters:', tableFilters);
+      
+      const response = await api.post('/api/reports', { 
+        name: newReportName.trim(), 
+        filters: tableFilters 
+      });
+      console.log('Report saved:', response.data);
+      
+      message.success('Report salvato');
+      setSaveReportModalOpen(false);
+    } catch (err) {
+      console.error('Error saving report', err);
+      message.error('Errore durante il salvataggio del report');
+    } finally {
+      setSavingReport(false);
+    }
   };
 
   // Rendering condizionale per loading DOPO tutti gli hook
@@ -662,8 +733,13 @@ export default function Lavorazioni(){
           </Row>
           
           {/* Statistiche filtri */}
-          <div style={{ marginTop: 12, fontSize: 12, color: '#666' }}>
-            Mostrando {visibleComponents.length} di {filteredAndSortedComponents.length} componenti
+          <div style={{ marginTop: 12, fontSize: 12, color: '#666', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>Mostrando {visibleComponents.length} di {filteredAndSortedComponents.length} componenti</div>
+            <div>
+              <Button size="small" icon={<SaveOutlined />} onClick={openSaveReportModal}>
+                Salva Report
+              </Button>
+            </div>
           </div>
         </Card>
         
@@ -686,6 +762,18 @@ export default function Lavorazioni(){
               bordered
               components={{
                 header: { cell: ResizableTitle }
+              }}
+              onChange={(pagination, filters, sorter, extra) => {
+                console.log('Table filters changed:', filters);
+                // Clean filters: remove null/undefined values
+                const cleanedFilters = Object.keys(filters).reduce((acc, key) => {
+                  if (filters[key] !== null && filters[key] !== undefined) {
+                    acc[key] = filters[key];
+                  }
+                  return acc;
+                }, {});
+                console.log('Cleaned filters:', cleanedFilters);
+                setTableFilters(cleanedFilters);
               }}
               onRow={(record) => ({
                 onClick: (event) => {
@@ -1300,6 +1388,22 @@ export default function Lavorazioni(){
       </Card>
 
       {/* Barcode Modal */}
+      {/* Save Report Modal */}
+      <Modal
+        title="Salva Report"
+        open={saveReportModalOpen}
+        onCancel={() => setSaveReportModalOpen(false)}
+        onOk={handleSaveReport}
+        okText="Salva"
+        confirmLoading={savingReport}
+      >
+        <div style={{ marginBottom: 8 }}>Salva i filtri correnti come un report dinamico. Il report verrà rieseguito al momento della visualizzazione.</div>
+        <Form layout="vertical">
+          <Form.Item label="Nome report" required>
+            <Input value={newReportName} onChange={(e) => setNewReportName(e.target.value)} />
+          </Form.Item>
+        </Form>
+      </Modal>
       <Modal
         open={barcodeModal.open}
         onCancel={() => setBarcodeModal({ open: false, value: '' })}
