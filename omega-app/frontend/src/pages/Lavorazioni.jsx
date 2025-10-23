@@ -976,12 +976,12 @@ export default function Lavorazioni(){
                 },
                 {
                   title: 'DDT Tratt.',
-                  dataIndex: 'ddt',
-                  key: 'ddt',
-                  width: columnWidths['ddt'] || 120,
+                  dataIndex: 'ddtTrattamenti',
+                  key: 'ddtTrattamenti',
+                  width: columnWidths['ddtTrattamenti'] || 120,
                   onHeaderCell: () => ({
-                    width: columnWidths['ddt'] || 120,
-                    onResize: handleResize('ddt'),
+                    width: columnWidths['ddtTrattamenti'] || 120,
+                    onResize: handleResize('ddtTrattamenti'),
                   }),
                   render: (text) => text || '-'
                 },
@@ -1224,6 +1224,16 @@ export default function Lavorazioni(){
                     </div>
                   )}
 
+                  {/* DDT Trattamenti */}
+                  {comp.ddtTrattamenti && (
+                    <div style={{ marginBottom: 12 }}>
+                      <Text style={{ fontSize: 11, color: '#666', display: 'block', marginBottom: 4 }}>
+                        DDT Tratt.:
+                      </Text>
+                      <Text style={{ fontSize: 12 }}>{comp.ddtTrattamenti}</Text>
+                    </div>
+                  )}
+
                   {/* Status - Clickable for quick change */}
                   <div>
                     {editingStatus === comp._id ? (
@@ -1444,6 +1454,13 @@ export default function Lavorazioni(){
                     </Tag>
                   ))}
                 </div>
+              </div>
+            )}
+            
+            {componentInfoModal.component.ddtTrattamenti && (
+              <div style={{ marginTop: 20 }}>
+                <Text strong>DDT Trattamenti: </Text>
+                <Text>{componentInfoModal.component.ddtTrattamenti}</Text>
               </div>
             )}
           </div>

@@ -19,6 +19,7 @@ commessaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Commessa', required: t
   mag: { type: String }, // Note magazzino (es: "1pz è in mag")
   type: { type: String, enum: ['INT', 'EST', 'C/LAV', 'CLM', ''], default: '' }, // Tipo trattamento
   fornitoreTrattamenti: { type: String }, // Fornitore trattamenti (es: "Galvanica Fenoglio")
+  ddtTrattamenti: { type: String }, // DDT trattamenti (campo testo libero)
   trattamenti: [{ type: String }],
   descrizioneComponente: { type: String }, // Nome/descrizione del componente dall'Excel
   barcode: { type: String },

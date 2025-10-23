@@ -74,4 +74,72 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 });
 
+// POST /treatments - Crea un nuovo trattamento manualmente
+router.post('/', requireAuth, async (req, res) => {
+  try {
+    const { name } = req.body;
+    
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Il nome del trattamento è obbligatorio' });
+    }
+    
+    const normalizedName = name.trim();
+    
+    // Verifica se esiste già
+    const existing = await Treatment.findOne({ name: normalizedName });
+    if (existing) {
+      return res.status(400).json({ error: 'Trattamento già esistente' });
+    }
+    
+    const treatment = new Treatment({
+      name: normalizedName,
+      usageCount: 0
+    });
+    
+    await treatment.save();
+    res.status(201).json(treatment);
+  } catch (err) {
+    console.error('Errore creazione treatment:', err);
+    res.status(500).json({ error: 'Errore nella creazione del trattamento' });
+  }
+});
+
+// PUT /treatments/:id - Modifica un trattamento
+router.put('/:id', requireAuth, async (req, res) => {
+  try {
+    const { name } = req.body;
+    
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Il nome del trattamento è obbligatorio' });
+    }
+    
+    const normalizedName = name.trim();
+    
+    // Verifica se esiste già un altro trattamento con lo stesso nome
+    const existing = await Treatment.findOne({ 
+      name: normalizedName,
+      _id: { $ne: req.params.id }
+    });
+    
+    if (existing) {
+      return res.status(400).json({ error: 'Esiste già un trattamento con questo nome' });
+    }
+    
+    const treatment = await Treatment.findByIdAndUpdate(
+      req.params.id,
+      { name: normalizedName },
+      { new: true }
+    );
+    
+    if (!treatment) {
+      return res.status(404).json({ error: 'Trattamento non trovato' });
+    }
+    
+    res.json(treatment);
+  } catch (err) {
+    console.error('Errore modifica treatment:', err);
+    res.status(500).json({ error: 'Errore nella modifica del trattamento' });
+  }
+});
+
 module.exports = router;

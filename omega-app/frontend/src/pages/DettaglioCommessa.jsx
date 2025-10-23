@@ -165,7 +165,6 @@ const DettaglioCommessa = () => {
   });
   const [statusChangeForm] = Form.useForm();
   const [historyModal, setHistoryModal] = useState({ open: false, component: null });
-  const [detailsModal, setDetailsModal] = useState({ open: false, component: null });
   
   // Stato per gestire le colonne visibili
   const [hiddenColumns, setHiddenColumns] = useState(() => {
@@ -216,6 +215,7 @@ const DettaglioCommessa = () => {
     { title: 'Type', dataIndex: 'type', key: 'type', width: 90 },
     { title: 'Trattamenti', dataIndex: 'trattamenti', key: 'trattamenti', width: 120 },
     { title: 'Fornitore Tratt.', dataIndex: 'fornitoreTrattamenti', key: 'fornitoreTrattamenti', width: 150 },
+    { title: 'DDT Tratt.', dataIndex: 'ddtTrattamenti', key: 'ddtTrattamenti', width: 120 },
     { title: 'Verificato', dataIndex: 'verificato', key: 'verificato', width: 90 },
     { title: 'Barcode', dataIndex: 'barcode', key: 'barcode', width: 80 },
     { title: 'Azioni', dataIndex: 'actions', key: 'actions', width: 80 }
@@ -270,6 +270,7 @@ const DettaglioCommessa = () => {
   const isEditing = (record) => (record._id || record.key) === editingKey;
   
   const edit = (record) => {
+    form.resetFields(); // Reset form prima di impostare nuovi valori
     form.setFieldsValue({ ...record });
     setEditingKey(record._id || record.key);
   };
@@ -285,6 +286,9 @@ const DettaglioCommessa = () => {
   const save = async (key) => {
     try {
       const row = await form.validateFields();
+      
+      console.log('[Frontend] save() - Form values:', row);
+      console.log('[Frontend] save() - ddtTrattamenti value:', row.ddtTrattamenti);
       
       // Normalizza i trattamenti in un array
       if (row.trattamenti) {
@@ -389,9 +393,7 @@ const DettaglioCommessa = () => {
         ...componentDataToSend,
         ...otherChanges, // Altri campi modificati nella tabella
         status: newStatus,
-        statusChangeNote: values.note || '',
-        ddtNumber: values.ddtNumber || '',
-        ddtDate: values.ddtDate || ''
+        statusChangeNote: values.note || ''
       };
       
       console.log('[Frontend] Status change - updating component:', componentId);
@@ -418,16 +420,6 @@ const DettaglioCommessa = () => {
     setStatusChangeModal({ open: false, componentId: null, currentStatus: '', newStatus: '', component: null });
     statusChangeForm.resetFields();
     setEditingKey(''); // Esce dalla modalità editing
-  };
-
-  const requiresDDT = (status) => {
-    // Stati che richiedono DDT: "Spedito" e "Arrivato da trattamento"
-    return status === '6' || (status && status.includes(':ARR'));
-  };
-
-  const requiresShippingInfo = (status) => {
-    // Stati che mostrano informazioni sulla spedizione: "Spedito" e "Arrivato da trattamento"
-    return status === '6' || (status && status.includes(':ARR'));
   };
 
   // Funzione per gestire il ridimensionamento delle colonne
@@ -483,6 +475,7 @@ const DettaglioCommessa = () => {
       type: '',
       trattamenti: [],
       fornitoreTrattamenti: '',
+      ddtTrattamenti: '',
       status: '1',
       verificato: false,
       barcode: ''
@@ -650,23 +643,9 @@ const DettaglioCommessa = () => {
         onFilter: (value, record) => record.status === value,
         filterIcon: filtered => <FilterOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
         render: (text, record) => (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Tag color={getStatusColor(text)}>
-              {getStatusLabel(text)}
-            </Tag>
-            {requiresShippingInfo(text) && (
-              <Tooltip title="Informazioni sulla spedizione">
-                <InfoCircleOutlined 
-                  style={{ 
-                    color: '#1890ff', 
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                  onClick={() => setDetailsModal({ open: true, component: record })}
-                />
-              </Tooltip>
-            )}
-          </div>
+          <Tag color={getStatusColor(text)}>
+            {getStatusLabel(text)}
+          </Tag>
         ),
         onCell: (record) => ({
           record,
@@ -714,6 +693,47 @@ const DettaglioCommessa = () => {
             </div>
           );
         },
+        onCell: (record) => ({
+          record,
+          inputType: 'text',
+          dataIndex: col.dataIndex,
+          title: col.title,
+          editing: isEditing(record),
+        }),
+      };
+    }
+
+    if (col.dataIndex === 'ddtTrattamenti') {
+      return {
+        ...commonProps,
+        filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Cerca DDT"
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => confirm()}
+                icon={<SearchOutlined />}
+                size="small"
+                style={{ width: 90 }}
+              >
+                Cerca
+              </Button>
+              <Button onClick={() => { clearFilters(); confirm(); }} size="small" style={{ width: 90 }}>
+                Reset
+              </Button>
+            </Space>
+          </div>
+        ),
+        filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+        onFilter: (value, record) => 
+          record.ddtTrattamenti?.toLowerCase().includes(value.toLowerCase()),
         onCell: (record) => ({
           record,
           inputType: 'text',
@@ -1166,25 +1186,6 @@ const DettaglioCommessa = () => {
               placeholder="Inserisci una nota per questo cambio di stato..."
             />
           </Form.Item>
-          
-          {requiresDDT(statusChangeModal.newStatus) && (
-            <>
-              <Divider orientation="left">Dati DDT</Divider>
-              <Form.Item
-                label="Numero DDT"
-                name="ddtNumber"
-              >
-                <Input placeholder="Inserisci numero DDT..." />
-              </Form.Item>
-              
-              <Form.Item
-                label="Data DDT"
-                name="ddtDate"
-              >
-                <Input type="date" />
-              </Form.Item>
-            </>
-          )}
         </Form>
       </Modal>
 
@@ -1260,113 +1261,6 @@ const DettaglioCommessa = () => {
                 Nessun cambio di stato registrato
               </div>
             )}
-          </div>
-        )}
-      </Modal>
-
-      {/* Modal Informazioni Spedizione */}
-      <Modal
-        title="Informazioni sulla Spedizione"
-        open={detailsModal.open}
-        onCancel={() => setDetailsModal({ open: false, component: null })}
-        footer={[
-          <Button key="close" onClick={() => setDetailsModal({ open: false, component: null })}>
-            Chiudi
-          </Button>
-        ]}
-        width={500}
-      >
-        {detailsModal.component && (
-          <div>
-            <div style={{ marginBottom: 16 }}>
-              <Text strong>Componente: </Text>
-              <Text>{detailsModal.component.descrizioneComponente}</Text>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <Text strong>Stato: </Text>
-              <Tag color={getStatusColor(detailsModal.component.status)}>
-                {getStatusLabel(detailsModal.component.status)}
-              </Tag>
-            </div>
-            
-            {/* Cerca DDT nei dati history */}
-            {(() => {
-              const historyWithDdt = detailsModal.component.history?.filter(h => 
-                (h.to === '6' || h.to?.includes(':ARR')) && (h.ddt && (h.ddt.number || h.ddt.date))
-              ) || [];
-              
-              if (historyWithDdt.length > 0) {
-                return (
-                  <div>
-                    <Text strong style={{ display: 'block', marginBottom: 12 }}>Documenti di Trasporto:</Text>
-                    {historyWithDdt.map((historyItem, index) => (
-                      <div key={index} style={{ 
-                        marginBottom: 12, 
-                        padding: 12, 
-                        background: '#f5f5f5', 
-                        borderRadius: 6,
-                        border: '1px solid #d9d9d9'
-                      }}>
-                        <div style={{ marginBottom: 8 }}>
-                          <Text strong>Numero DDT: </Text>
-                          <Text>{historyItem.ddt?.number || 'Non specificato'}</Text>
-                        </div>
-                        <div style={{ marginBottom: 8 }}>
-                          <Text strong>Data DDT: </Text>
-                          <Text>
-                            {historyItem.ddt?.date ? new Date(historyItem.ddt.date).toLocaleDateString('it-IT') : 'Non specificata'}
-                          </Text>
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#666' }}>
-                          Registrato il {new Date(historyItem.date).toLocaleDateString('it-IT')}
-                          {historyItem.user && ` da ${historyItem.user}`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-              
-              // Fallback: cerca DDT nel campo ddt del componente
-              if (detailsModal.component.ddt && detailsModal.component.ddt.length > 0) {
-                return (
-                  <div>
-                    <Text strong style={{ display: 'block', marginBottom: 12 }}>Documenti di Trasporto:</Text>
-                    {detailsModal.component.ddt.map((ddt, index) => (
-                      <div key={index} style={{ 
-                        marginBottom: 12, 
-                        padding: 12, 
-                        background: '#f5f5f5', 
-                        borderRadius: 6,
-                        border: '1px solid #d9d9d9'
-                      }}>
-                        <div style={{ marginBottom: 8 }}>
-                          <Text strong>Numero DDT: </Text>
-                          <Text>{ddt.number || 'Non specificato'}</Text>
-                        </div>
-                        <div style={{ marginBottom: 8 }}>
-                          <Text strong>Data DDT: </Text>
-                          <Text>
-                            {ddt.date ? new Date(ddt.date).toLocaleDateString('it-IT') : 'Non specificata'}
-                          </Text>
-                        </div>
-                        {ddt.createdBy && (
-                          <div style={{ fontSize: '12px', color: '#666' }}>
-                            Creato da {ddt.createdBy} il {new Date(ddt.createdAt).toLocaleDateString('it-IT')}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-              
-              return (
-                <div style={{ textAlign: 'center', color: '#999', padding: '20px 0' }}>
-                  <Text type="secondary">Nessun documento di trasporto disponibile</Text>
-                </div>
-              );
-            })()}
           </div>
         )}
       </Modal>

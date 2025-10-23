@@ -4,7 +4,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import HeaderBar from './components/HeaderBar';
 import NotificationBadge from './components/NotificationBadge';
 import { useAuth } from './AuthContext';
-import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined, UserOutlined, BellOutlined, CloudOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, CarryOutOutlined, FileOutlined, PieChartOutlined, UserOutlined, BellOutlined, CloudOutlined, LeftOutlined, RightOutlined, SettingOutlined, TagsOutlined } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
 
@@ -35,19 +35,39 @@ const menuItems = [
         label: <Link to="/notifiche">Notifiche</Link> 
     },
     { key: 'files', icon: <CloudOutlined />, label: <Link to="/files">Vedi Files</Link> },
-        { 
-            key: 'report', 
-            icon: <PieChartOutlined style={{ color: '#b0b0b0' }} />, 
-            label: <span style={{ color: '#b0b0b0', pointerEvents: 'none', cursor: 'not-allowed' }}>Reporting</span> 
-        },
+    { 
+        key: 'report', 
+        icon: <PieChartOutlined style={{ color: '#b0b0b0' }} />, 
+        label: <span style={{ color: '#b0b0b0', pointerEvents: 'none', cursor: 'not-allowed' }}>Reporting</span> 
+    },
 ];
 
-  // Add user management menu item only for admin users
+  // Add management menu items (visible to all authenticated users)
+  const managementItems = [];
+  
+  // Anagrafica trattamenti - visible to all
+  managementItems.push({
+    key: 'gestione-anagrafiche',
+    icon: <TagsOutlined />,
+    label: <Link to="/anagrafiche/trattamenti">Anagrafiche</Link>
+  });
+  
+  // User management - only for admin users
   if (user && user.profilo === 'ADMIN') {
-    menuItems.push({
-      key: 'utenti',
+    managementItems.push({
+      key: 'gestione-utenti',
       icon: <UserOutlined />,
-      label: <Link to="/utenti">Gestione Utenze</Link>
+      label: <Link to="/utenti">Utenti</Link>
+    });
+  }
+
+  // Add Gestione submenu if there are items
+  if (managementItems.length > 0) {
+    menuItems.push({
+      key: 'gestione',
+      icon: <SettingOutlined />,
+      label: 'Gestione',
+      children: managementItems
     });
   }
 

@@ -9,6 +9,7 @@ import DettaglioCommessa from './pages/DettaglioCommessa';
 import GestioneUtenti from './pages/GestioneUtenti';
 import Notifiche from './pages/Notifiche';
 import ViewFiles from './pages/ViewFiles';
+import AnagraficaTrattamenti from './pages/AnagraficaTrattamenti';
 
 export default function App(){
   return (
@@ -24,6 +25,7 @@ export default function App(){
             <Route path="report" element={<div>Reporting (placeholder)</div>} />
             <Route path="utenti" element={<GestioneUtenti />} />
             <Route path="files" element={<ViewFiles />} />
+            <Route path="anagrafiche/trattamenti" element={<AnagraficaTrattamenti />} />
           </Route>
         </Routes>
       </AuthProvider>
