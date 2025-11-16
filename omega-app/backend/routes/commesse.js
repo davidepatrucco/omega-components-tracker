@@ -5,6 +5,7 @@ const fs = require('fs');
 const xlsx = require('xlsx');
 const Commessa = require('../models/Commessa');
 const Component = require('../models/Component');
+const Notification = require('../models/Notification');
 const { requireAuth } = require('../middleware/auth');
 
 // Configure multer for file uploads
@@ -96,10 +97,60 @@ router.put('/:id', requireAuth, async (req, res) => {
 // DELETE /commesse/:id
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
-    const c = await Commessa.findByIdAndDelete(req.params.id);
+    // Verifica che la commessa esista
+    const c = await Commessa.findById(req.params.id);
     if (!c) return res.status(404).json({ error: 'commessa not found' });
-    res.json({ message: 'commessa deleted successfully' });
+    
+    console.log(`🗑️  Starting deletion of commessa ${c.code} (${req.params.id})`);
+    
+    // 1. Trova tutti i componenti della commessa
+    const components = await Component.find({ commessaId: req.params.id });
+    const componentIds = components.map(comp => comp._id);
+    
+    console.log(`   Found ${components.length} components to delete`);
+    
+    // 2. Cancella le notifiche collegate ai componenti
+    if (componentIds.length > 0) {
+      const notificationDeleteResult = await Notification.deleteMany({
+        'relatedEntity.type': 'component',
+        'relatedEntity.id': { $in: componentIds }
+      });
+      console.log(`   Deleted ${notificationDeleteResult.deletedCount} notifications`);
+    }
+    
+    // 3. Log dei file DDT che rimarranno orfani (per eventuale cleanup futuro)
+    const filesCount = components.reduce((count, comp) => {
+      if (comp.ddt && comp.ddt.length > 0) {
+        comp.ddt.forEach(d => {
+          if (d.files && d.files.length > 0) {
+            count += d.files.length;
+          }
+        });
+      }
+      return count;
+    }, 0);
+    
+    if (filesCount > 0) {
+      console.log(`   ⚠️  Warning: ${filesCount} DDT files will become orphaned (manual cleanup required)`);
+    }
+    
+    // 4. Cancella tutti i componenti della commessa
+    const componentDeleteResult = await Component.deleteMany({ commessaId: req.params.id });
+    console.log(`   Deleted ${componentDeleteResult.deletedCount} components`);
+    
+    // 5. Cancella la commessa
+    await Commessa.findByIdAndDelete(req.params.id);
+    console.log(`   Deleted commessa ${c.code}`);
+    console.log(`✅ Deletion completed successfully`);
+    
+    res.json({ 
+      message: 'commessa deleted successfully', 
+      deletedComponents: componentDeleteResult.deletedCount,
+      deletedNotifications: componentIds.length > 0 ? notificationDeleteResult.deletedCount : 0,
+      orphanedFiles: filesCount
+    });
   } catch (err) {
+    console.error('Error deleting commessa:', err);
     res.status(500).json({ error: 'error deleting commessa' });
   }
 });
