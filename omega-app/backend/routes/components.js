@@ -284,4 +284,86 @@ router.post('/:id/change-status', requireAuth, async (req, res) => {
   }
 });
 
+// 🆕 POST /components/bulk-status-change - cambio stato di massa
+router.post('/bulk-status-change', requireAuth, async (req, res) => {
+  try {
+    const { componentIds, newStatus, note } = req.body;
+    
+    // Validazione input
+    if (!Array.isArray(componentIds) || componentIds.length === 0) {
+      return res.status(400).json({ error: 'componentIds array is required and must not be empty' });
+    }
+    
+    if (!newStatus) {
+      return res.status(400).json({ error: 'newStatus is required' });
+    }
+    
+    console.log(`🔄 Bulk status change: ${componentIds.length} components to status ${newStatus}`);
+    
+    const results = {
+      success: [],
+      failed: [],
+      total: componentIds.length
+    };
+    
+    // Processa ogni componente
+    for (const componentId of componentIds) {
+      try {
+        const component = await Component.findById(componentId);
+        
+        if (!component) {
+          results.failed.push({
+            componentId,
+            error: 'Component not found'
+          });
+          continue;
+        }
+        
+        // Verifica che lo stato sia consentito
+        if (!component.allowedStatuses.includes(newStatus)) {
+          results.failed.push({
+            componentId,
+            currentStatus: component.status,
+            error: 'Status transition not allowed'
+          });
+          continue;
+        }
+        
+        // Aggiungi alla history
+        component.history = component.history || [];
+        component.history.push({
+          from: component.status,
+          to: newStatus,
+          date: new Date(),
+          note: note || 'Cambio stato di massa',
+          user: req.user?.username || 'system'
+        });
+        
+        component.status = newStatus;
+        
+        await component.save();
+        results.success.push(componentId);
+        
+      } catch (err) {
+        console.error(`Error processing component ${componentId}:`, err);
+        results.failed.push({
+          componentId,
+          error: err.message
+        });
+      }
+    }
+    
+    console.log(`✅ Bulk status change completed: ${results.success.length} success, ${results.failed.length} failed`);
+    
+    res.json({
+      message: 'Bulk status change completed',
+      results
+    });
+    
+  } catch (err) {
+    console.error('Bulk status change error:', err);
+    res.status(500).json({ error: 'Error during bulk status change', details: err.message });
+  }
+});
+
 module.exports = router;

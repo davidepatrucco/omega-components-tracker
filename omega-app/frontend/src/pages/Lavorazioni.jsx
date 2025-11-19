@@ -177,6 +177,10 @@ export default function Lavorazioni(){
     return saved ? JSON.parse(saved) : {};
   });
 
+  // 🆕 Stati per selezione multipla e azioni di massa
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
   // Funzione per gestire il ridimensionamento delle colonne
   const handleResize = (dataIndex) => (e, { size }) => {
     const widths = { ...columnWidths };
@@ -329,6 +333,50 @@ export default function Lavorazioni(){
     } catch (err) {
       message.error(err.userMessage || 'Errore durante il cambio stato verificato');
     }
+  };
+
+  // 🆕 Funzione per gestire cambio stato di massa NUOVO → PROD.INTERNA
+  const handleBulkStartProduction = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Seleziona almeno un componente');
+      return;
+    }
+
+    // Filtra solo i componenti in stato NUOVO (1)
+    const selectedComponents = components.filter(c => selectedRowKeys.includes(c._id));
+    const componentsInNuovo = selectedComponents.filter(c => c.status === '1');
+    
+    if (componentsInNuovo.length === 0) {
+      message.warning('Nessun componente selezionato è in stato "Nuovo"');
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Avvia Produzione Interna',
+      content: `Vuoi spostare ${componentsInNuovo.length} componenti da "Nuovo" a "Produzione Interna"?`,
+      okText: 'Conferma',
+      cancelText: 'Annulla',
+      onOk: async () => {
+        setBulkActionLoading(true);
+        try {
+          // Chiamata API per bulk status change
+          await api.post('/api/components/bulk-status-change', {
+            componentIds: componentsInNuovo.map(c => c._id),
+            newStatus: '2', // PRODUZIONE_INTERNA
+            note: 'Cambio stato di massa: avvio produzione interna'
+          });
+          
+          message.success(`${componentsInNuovo.length} componenti spostati in Produzione Interna`);
+          setSelectedRowKeys([]); // Reset selezione
+          fetchData(); // Refresh data
+        } catch (err) {
+          console.error('Bulk status change error:', err);
+          message.error(err.userMessage || 'Errore durante il cambio stato di massa');
+        } finally {
+          setBulkActionLoading(false);
+        }
+      }
+    });
   };
 
   // Funzioni per editing inline del status (come DettaglioCommessa)
@@ -732,14 +780,36 @@ export default function Lavorazioni(){
             </Col>
           </Row>
           
-          {/* Statistiche filtri */}
-          <div style={{ marginTop: 12, fontSize: 12, color: '#666', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Statistiche filtri e azioni di massa */}
+          <div style={{ marginTop: 12, fontSize: 12, color: '#666', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
             <div>Mostrando {visibleComponents.length} di {filteredAndSortedComponents.length} componenti</div>
-            <div>
+            <Space size={8}>
+              {/* 🆕 Azioni di massa - mostrate solo in visualizzazione lista */}
+              {viewMode === 'list' && selectedRowKeys.length > 0 && (
+                <>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {selectedRowKeys.length} selezionati
+                  </Text>
+                  <Button 
+                    size="small" 
+                    type="primary"
+                    loading={bulkActionLoading}
+                    onClick={handleBulkStartProduction}
+                  >
+                    Avvia Produzione Interna
+                  </Button>
+                  <Button 
+                    size="small" 
+                    onClick={() => setSelectedRowKeys([])}
+                  >
+                    Deseleziona
+                  </Button>
+                </>
+              )}
               <Button size="small" icon={<SaveOutlined />} onClick={openSaveReportModal}>
                 Salva Report
               </Button>
-            </div>
+            </Space>
           </div>
         </Card>
         
@@ -760,6 +830,14 @@ export default function Lavorazioni(){
               pagination={false}
               size="small"
               bordered
+              rowSelection={{
+                selectedRowKeys,
+                onChange: (selectedKeys) => setSelectedRowKeys(selectedKeys),
+                getCheckboxProps: (record) => ({
+                  // Opzionale: disabilita checkbox per componenti non in stato NUOVO
+                  // disabled: record.status !== '1',
+                }),
+              }}
               components={{
                 header: { cell: ResizableTitle }
               }}
@@ -774,6 +852,13 @@ export default function Lavorazioni(){
                 }, {});
                 console.log('Cleaned filters:', cleanedFilters);
                 setTableFilters(cleanedFilters);
+                
+                // 🔥 SOLUZIONE: Se ci sono filtri attivi, carica TUTTI i componenti automaticamente
+                const hasActiveFilters = Object.keys(cleanedFilters).length > 0;
+                if (hasActiveFilters && visibleCount < filteredAndSortedComponents.length) {
+                  console.log('🔍 Filtro applicato - carico tutti i componenti automaticamente');
+                  setVisibleCount(filteredAndSortedComponents.length);
+                }
               }}
               onRow={(record) => ({
                 onClick: (event) => {
