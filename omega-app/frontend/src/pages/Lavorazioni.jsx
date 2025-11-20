@@ -515,10 +515,11 @@ export default function Lavorazioni(){
   const handleLoadMore = useCallback(() => {
     setIsLoadingMore(true);
     setTimeout(() => {
-      setVisibleCount(prev => prev + 8);
+      // 🔥 CARICA TUTTI i componenti rimanenti, non solo +8
+      setVisibleCount(filteredAndSortedComponents.length);
       setIsLoadingMore(false);
     }, 300);
-  }, []);
+  }, [filteredAndSortedComponents.length]);
 
   const handleFilterChange = (key, value) => {
     console.log(`Filter change: ${key} = ${value}`);
@@ -1265,7 +1266,7 @@ export default function Lavorazioni(){
                   loading={isLoadingMore}
                   style={{ borderRadius: 20 }}
                 >
-                  Carica altri componenti ({filteredAndSortedComponents.length - visibleCount} rimanenti)
+                  Carica tutti i componenti ({filteredAndSortedComponents.length - visibleCount} rimanenti)
                 </Button>
               </div>
             )}
@@ -1464,7 +1465,7 @@ export default function Lavorazioni(){
                   onClick={handleLoadMore}
                   style={{ borderRadius: 20 }}
                 >
-                  Carica altri componenti ({filteredAndSortedComponents.length - visibleCount} rimanenti)
+                  Carica tutti i componenti ({filteredAndSortedComponents.length - visibleCount} rimanenti)
                 </Button>
               </div>
             )}
