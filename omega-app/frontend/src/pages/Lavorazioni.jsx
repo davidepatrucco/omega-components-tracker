@@ -797,7 +797,7 @@ export default function Lavorazioni(){
                     loading={bulkActionLoading}
                     onClick={handleBulkStartProduction}
                   >
-                    Avvia Produzione Interna
+                    Sposta NUOVO in Produzione
                   </Button>
                   <Button 
                     size="small" 
