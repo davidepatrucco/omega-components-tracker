@@ -366,4 +366,74 @@ router.post('/bulk-status-change', requireAuth, async (req, res) => {
   }
 });
 
+// 🆕 POST /components/bulk-delete - cancellazione di massa componenti
+router.post('/bulk-delete', requireAuth, async (req, res) => {
+  try {
+    const { componentIds } = req.body;
+    
+    // Validazione input
+    if (!Array.isArray(componentIds) || componentIds.length === 0) {
+      return res.status(400).json({ error: 'componentIds array is required and must not be empty' });
+    }
+    
+    console.log(`🗑️  Bulk delete request: ${componentIds.length} components by user ${req.user?.username}`);
+    
+    const results = {
+      success: [],
+      failed: [],
+      total: componentIds.length
+    };
+    
+    // Processa ogni componente
+    for (const componentId of componentIds) {
+      try {
+        const component = await Component.findById(componentId);
+        
+        if (!component) {
+          results.failed.push({
+            componentId,
+            error: 'Component not found'
+          });
+          continue;
+        }
+        
+        // Verifica che il componente non sia già cancellato
+        if (component.cancellato) {
+          results.failed.push({
+            componentId,
+            error: 'Component already deleted'
+          });
+          continue;
+        }
+        
+        // Soft delete: imposta il flag cancellato a true invece di eliminare fisicamente
+        component.cancellato = true;
+        await component.save();
+        
+        results.success.push(componentId);
+        
+        console.log(`   ✓ Deleted component ${componentId} (${component.descrizioneComponente})`);
+        
+      } catch (err) {
+        console.error(`Error processing component ${componentId}:`, err);
+        results.failed.push({
+          componentId,
+          error: err.message
+        });
+      }
+    }
+    
+    console.log(`✅ Bulk delete completed: ${results.success.length} success, ${results.failed.length} failed`);
+    
+    res.json({
+      message: 'Bulk delete completed',
+      results
+    });
+    
+  } catch (err) {
+    console.error('Bulk delete error:', err);
+    res.status(500).json({ error: 'Error during bulk delete', details: err.message });
+  }
+});
+
 module.exports = router;

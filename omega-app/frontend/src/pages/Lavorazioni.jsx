@@ -379,6 +379,58 @@ export default function Lavorazioni(){
     });
   };
 
+  // 🆕 Funzione per cancellazione multipla componenti
+  const handleBulkDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Seleziona almeno un componente da cancellare');
+      return;
+    }
+
+    const selectedComponents = components.filter(c => selectedRowKeys.includes(c._id));
+    
+    Modal.confirm({
+      title: '⚠️ Conferma Cancellazione',
+      content: (
+        <div>
+          <p><strong>Attenzione!</strong> Stai per cancellare <strong>{selectedComponents.length} componenti</strong>.</p>
+          <p>Questa operazione è <strong>irreversibile</strong>.</p>
+          <p style={{ marginTop: 16, fontSize: 12, color: '#666' }}>
+            Componenti selezionati:
+          </p>
+          <ul style={{ maxHeight: 200, overflow: 'auto', fontSize: 12 }}>
+            {selectedComponents.slice(0, 10).map(c => (
+              <li key={c._id}>
+                {c.descrizioneComponente || c._id} - {c.commessaCode} - {getStatusLabel(c.status)}
+              </li>
+            ))}
+            {selectedComponents.length > 10 && <li>... e altri {selectedComponents.length - 10}</li>}
+          </ul>
+        </div>
+      ),
+      okText: 'Sì, cancella',
+      okType: 'danger',
+      cancelText: 'Annulla',
+      icon: null,
+      onOk: async () => {
+        setBulkActionLoading(true);
+        try {
+          await api.post('/api/components/bulk-delete', {
+            componentIds: selectedRowKeys
+          });
+          
+          message.success(`${selectedComponents.length} componenti cancellati con successo`);
+          setSelectedRowKeys([]);
+          fetchData(); // Refresh data
+        } catch (err) {
+          console.error('Bulk delete error:', err);
+          message.error(err.userMessage || 'Errore durante la cancellazione');
+        } finally {
+          setBulkActionLoading(false);
+        }
+      }
+    });
+  };
+
   // Funzioni per editing inline del status (come DettaglioCommessa)
   const editStatus = (componentId) => {
     setEditingStatus(componentId);
@@ -798,6 +850,14 @@ export default function Lavorazioni(){
                     onClick={handleBulkStartProduction}
                   >
                     Sposta NUOVO in Produzione
+                  </Button>
+                  <Button 
+                    size="small" 
+                    danger
+                    loading={bulkActionLoading}
+                    onClick={handleBulkDelete}
+                  >
+                    Cancella selezionati
                   </Button>
                   <Button 
                     size="small" 
