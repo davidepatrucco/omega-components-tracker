@@ -144,14 +144,21 @@ export default function Lavorazioni(){
   const [form] = Form.useForm(); // Form per editing inline
   
   // Filtri e ordinamento
-  const [filters, setFilters] = useState({
-    search: '',
-    verificato: 'all', // 'all', 'true', 'false'
-    includeShipped: true,
-    status: 'all'
+  const [filters, setFilters] = useState(() => {
+    const saved = sessionStorage.getItem('lavorazioni_filters');
+    return saved ? JSON.parse(saved) : {
+      search: '',
+      verificato: 'all', // 'all', 'true', 'false'
+      includeShipped: true,
+      status: 'all'
+    };
   });
-  const [sortBy, setSortBy] = useState('createdAt'); // 'createdAt', 'commessaCode', 'status', 'descrizione'
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc', 'desc'
+  const [sortBy, setSortBy] = useState(() => {
+    return sessionStorage.getItem('lavorazioni_sortBy') || 'createdAt';
+  }); // 'createdAt', 'commessaCode', 'status', 'descrizione'
+  const [sortOrder, setSortOrder] = useState(() => {
+    return sessionStorage.getItem('lavorazioni_sortOrder') || 'desc';
+  }); // 'asc', 'desc'
   
   // Paginazione lazy
   const [visibleCount, setVisibleCount] = useState(8);
@@ -163,7 +170,10 @@ export default function Lavorazioni(){
   const [savingReport, setSavingReport] = useState(false);
   
   // Table filters state (for Ant Design table filters)
-  const [tableFilters, setTableFilters] = useState({});
+  const [tableFilters, setTableFilters] = useState(() => {
+    const saved = sessionStorage.getItem('lavorazioni_tableFilters');
+    return saved ? JSON.parse(saved) : {};
+  });
   
   // Visualizzazione (card o lista)
   const [viewMode, setViewMode] = useState(() => {
@@ -180,6 +190,23 @@ export default function Lavorazioni(){
   // 🆕 Stati per selezione multipla e azioni di massa
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
+  // Persistenza filtri in sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('lavorazioni_filters', JSON.stringify(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    sessionStorage.setItem('lavorazioni_sortBy', sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
+    sessionStorage.setItem('lavorazioni_sortOrder', sortOrder);
+  }, [sortOrder]);
+
+  useEffect(() => {
+    sessionStorage.setItem('lavorazioni_tableFilters', JSON.stringify(tableFilters));
+  }, [tableFilters]);
 
   // Funzione per gestire il ridimensionamento delle colonne
   const handleResize = (dataIndex) => (e, { size }) => {
