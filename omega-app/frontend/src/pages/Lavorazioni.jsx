@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../api';
 import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch, DatePicker, Divider, Table, Segmented, Dropdown } from 'antd';
-import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined, AppstoreOutlined, UnorderedListOutlined, SaveOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined, AppstoreOutlined, UnorderedListOutlined, SaveOutlined, CopyOutlined } from '@ant-design/icons';
 import BarcodeWithText from '../BarcodeWithText';
 import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses } from '../utils/statusUtils';
 import { useNavigate } from 'react-router-dom';
@@ -1003,6 +1003,11 @@ export default function Lavorazioni(){
               }}
               onRow={(record) => ({
                 onClick: (event) => {
+                  // Non navigare se l'utente sta selezionando testo (per copiare codici componente)
+                  const selection = window.getSelection();
+                  if (selection && selection.toString().trim().length > 0) {
+                    return;
+                  }
                   // Non navigare se si clicca su elementi interattivi
                   const isInteractiveElement = event.target.closest('.ant-switch, .ant-tag, .ant-btn, .ant-select, .ant-checkbox');
                   if (!isInteractiveElement && record.commessaId) {
@@ -1100,10 +1105,22 @@ export default function Lavorazioni(){
                   render: (text) => (
                     <span 
                       onClick={(e) => e.stopPropagation()} 
-                      style={{ cursor: 'text', userSelect: 'text' }}
-                      title="Seleziona per copiare"
+                      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
                     >
-                      {text}
+                      <span style={{ cursor: 'text', userSelect: 'text', flex: 1 }}>{text}</span>
+                      <Tooltip title="Copia codice">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<CopyOutlined />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(text);
+                            message.success('Codice copiato!');
+                          }}
+                          style={{ padding: 0, height: 'auto', minWidth: 'auto', color: '#999' }}
+                        />
+                      </Tooltip>
                     </span>
                   )
                 },
