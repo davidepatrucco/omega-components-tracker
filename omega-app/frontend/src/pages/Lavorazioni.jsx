@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../api';
-import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch, DatePicker, Divider, Table, Segmented } from 'antd';
+import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch, DatePicker, Divider, Table, Segmented, Dropdown } from 'antd';
 import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined, AppstoreOutlined, UnorderedListOutlined, SaveOutlined } from '@ant-design/icons';
 import BarcodeWithText from '../BarcodeWithText';
 import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses } from '../utils/statusUtils';
@@ -362,40 +362,75 @@ export default function Lavorazioni(){
     }
   };
 
-  // 🆕 Funzione per gestire cambio stato di massa NUOVO → PROD.INTERNA
-  const handleBulkStartProduction = async () => {
+  // 🆕 Calcola gli stati comuni disponibili per i componenti selezionati
+  const bulkAvailableStatuses = useMemo(() => {
+    if (selectedRowKeys.length === 0) return [];
+    
+    const selectedComponents = components.filter(c => selectedRowKeys.includes(c._id));
+    if (selectedComponents.length === 0) return [];
+    
+    // Intersezione degli allowedStatuses di tutti i componenti selezionati
+    const commonStatuses = selectedComponents.reduce((acc, comp) => {
+      const allowed = comp.allowedStatuses || [];
+      if (acc === null) return new Set(allowed);
+      return new Set([...acc].filter(s => allowed.includes(s)));
+    }, null);
+    
+    return Array.from(commonStatuses || []);
+  }, [selectedRowKeys, components]);
+
+  // 🆕 Genera le opzioni del menu dropdown per SPOSTA IN
+  const bulkStatusMenuItems = useMemo(() => {
+    return bulkAvailableStatuses.map(status => ({
+      key: status,
+      label: getStatusLabel(status)
+    }));
+  }, [bulkAvailableStatuses]);
+
+  // 🆕 Handler per cambio stato massivo generico
+  const handleBulkStatusChange = async ({ key: newStatus }) => {
     if (selectedRowKeys.length === 0) {
       message.warning('Seleziona almeno un componente');
       return;
     }
 
-    // Filtra solo i componenti in stato NUOVO (1)
     const selectedComponents = components.filter(c => selectedRowKeys.includes(c._id));
-    const componentsInNuovo = selectedComponents.filter(c => c.status === '1');
+    const statusLabel = getStatusLabel(newStatus);
     
-    if (componentsInNuovo.length === 0) {
-      message.warning('Nessun componente selezionato è in stato "Nuovo"');
-      return;
-    }
-
     Modal.confirm({
-      title: 'Avvia Produzione Interna',
-      content: `Vuoi spostare ${componentsInNuovo.length} componenti da "Nuovo" a "Produzione Interna"?`,
+      title: `Sposta in: ${statusLabel}`,
+      content: (
+        <div>
+          <p>Vuoi spostare <strong>{selectedComponents.length} componenti</strong> allo stato:</p>
+          <p style={{ fontSize: 16, fontWeight: 'bold', color: '#1677ff' }}>{statusLabel}</p>
+          {selectedComponents.length > 5 && (
+            <p style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
+              Componenti selezionati: {selectedComponents.slice(0, 5).map(c => c.descrizioneComponente || c.barcode).join(', ')}...
+            </p>
+          )}
+        </div>
+      ),
       okText: 'Conferma',
       cancelText: 'Annulla',
       onOk: async () => {
         setBulkActionLoading(true);
         try {
-          // Chiamata API per bulk status change
-          await api.post('/api/components/bulk-status-change', {
-            componentIds: componentsInNuovo.map(c => c._id),
-            newStatus: '2', // PRODUZIONE_INTERNA
-            note: 'Cambio stato di massa: avvio produzione interna'
+          const result = await api.post('/api/components/bulk-status-change', {
+            componentIds: selectedRowKeys,
+            newStatus,
+            note: `Cambio stato di massa a: ${statusLabel}`
           });
           
-          message.success(`${componentsInNuovo.length} componenti spostati in Produzione Interna`);
-          setSelectedRowKeys([]); // Reset selezione
-          fetchData(); // Refresh data
+          const { success, failed } = result.data.results || { success: [], failed: [] };
+          
+          if (failed.length > 0) {
+            message.warning(`${success.length} componenti spostati, ${failed.length} non validi`);
+          } else {
+            message.success(`${success.length} componenti spostati in "${statusLabel}"`);
+          }
+          
+          setSelectedRowKeys([]);
+          fetchData();
         } catch (err) {
           console.error('Bulk status change error:', err);
           message.error(err.userMessage || 'Errore durante il cambio stato di massa');
@@ -404,6 +439,11 @@ export default function Lavorazioni(){
         }
       }
     });
+  };
+
+  // Funzione legacy mantenuta per retrocompatibilità
+  const handleBulkStartProduction = async () => {
+    handleBulkStatusChange({ key: '2' });
   };
 
   // 🆕 Funzione per cancellazione multipla componenti
@@ -870,14 +910,27 @@ export default function Lavorazioni(){
                   <Text type="secondary" style={{ fontSize: 12 }}>
                     {selectedRowKeys.length} selezionati
                   </Text>
-                  <Button 
-                    size="small" 
-                    type="primary"
-                    loading={bulkActionLoading}
-                    onClick={handleBulkStartProduction}
+                  <Dropdown
+                    menu={{ 
+                      items: bulkStatusMenuItems,
+                      onClick: handleBulkStatusChange
+                    }}
+                    disabled={bulkStatusMenuItems.length === 0 || bulkActionLoading}
+                    trigger={['click']}
                   >
-                    Sposta NUOVO in Produzione
-                  </Button>
+                    <Button 
+                      size="small" 
+                      type="primary"
+                      loading={bulkActionLoading}
+                    >
+                      SPOSTA IN <DownOutlined />
+                    </Button>
+                  </Dropdown>
+                  {bulkStatusMenuItems.length === 0 && selectedRowKeys.length > 0 && (
+                    <Tooltip title="I componenti selezionati non hanno stati di destinazione comuni">
+                      <Text type="secondary" style={{ fontSize: 11 }}>Nessuno stato comune</Text>
+                    </Tooltip>
+                  )}
                   <Button 
                     size="small" 
                     danger
@@ -951,7 +1004,7 @@ export default function Lavorazioni(){
               onRow={(record) => ({
                 onClick: (event) => {
                   // Non navigare se si clicca su elementi interattivi
-                  const isInteractiveElement = event.target.closest('.ant-switch, .ant-tag, .ant-btn, .ant-select');
+                  const isInteractiveElement = event.target.closest('.ant-switch, .ant-tag, .ant-btn, .ant-select, .ant-checkbox');
                   if (!isInteractiveElement && record.commessaId) {
                     navigate(`/commesse/${record.commessaId}`);
                   }
@@ -964,6 +1017,7 @@ export default function Lavorazioni(){
                   dataIndex: 'commessaCode',
                   key: 'commessaCode',
                   width: columnWidths['commessaCode'] || 140,
+                  filteredValue: tableFilters.commessaCode || null,
                   onHeaderCell: () => ({
                     width: columnWidths['commessaCode'] || 140,
                     onResize: handleResize('commessaCode'),
@@ -1009,6 +1063,7 @@ export default function Lavorazioni(){
                   dataIndex: 'descrizioneComponente',
                   key: 'descrizioneComponente',
                   width: columnWidths['descrizioneComponente'] || 180,
+                  filteredValue: tableFilters.descrizioneComponente || null,
                   onHeaderCell: () => ({
                     width: columnWidths['descrizioneComponente'] || 180,
                     onResize: handleResize('descrizioneComponente'),
@@ -1041,7 +1096,16 @@ export default function Lavorazioni(){
                   filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
                   onFilter: (value, record) => 
                     record.descrizioneComponente?.toLowerCase().includes(value.toLowerCase()),
-                  ellipsis: true
+                  ellipsis: true,
+                  render: (text) => (
+                    <span 
+                      onClick={(e) => e.stopPropagation()} 
+                      style={{ cursor: 'text', userSelect: 'text' }}
+                      title="Seleziona per copiare"
+                    >
+                      {text}
+                    </span>
+                  )
                 },
                 {
                   title: 'Qty',
@@ -1060,6 +1124,7 @@ export default function Lavorazioni(){
                   dataIndex: 'status',
                   key: 'status',
                   width: columnWidths['status'] || 160,
+                  filteredValue: tableFilters.status || null,
                   onHeaderCell: () => ({
                     width: columnWidths['status'] || 160,
                     onResize: handleResize('status'),
@@ -1128,6 +1193,7 @@ export default function Lavorazioni(){
                   dataIndex: 'type',
                   key: 'type',
                   width: columnWidths['type'] || 100,
+                  filteredValue: tableFilters.type || null,
                   onHeaderCell: () => ({
                     width: columnWidths['type'] || 100,
                     onResize: handleResize('type'),
@@ -1150,6 +1216,7 @@ export default function Lavorazioni(){
                   dataIndex: 'trattamenti',
                   key: 'trattamenti',
                   width: columnWidths['trattamenti'] || 130,
+                  filteredValue: tableFilters.trattamenti || null,
                   onHeaderCell: () => ({
                     width: columnWidths['trattamenti'] || 130,
                     onResize: handleResize('trattamenti'),
@@ -1201,6 +1268,7 @@ export default function Lavorazioni(){
                   dataIndex: 'fornitoreTrattamenti',
                   key: 'fornitoreTrattamenti',
                   width: columnWidths['fornitoreTrattamenti'] || 150,
+                  filteredValue: tableFilters.fornitoreTrattamenti || null,
                   onHeaderCell: () => ({
                     width: columnWidths['fornitoreTrattamenti'] || 150,
                     onResize: handleResize('fornitoreTrattamenti'),
@@ -1251,6 +1319,7 @@ export default function Lavorazioni(){
                   dataIndex: 'verificato',
                   key: 'verificato',
                   width: columnWidths['verificato'] || 100,
+                  filteredValue: tableFilters.verificato || null,
                   onHeaderCell: () => ({
                     width: columnWidths['verificato'] || 100,
                     onResize: handleResize('verificato'),
