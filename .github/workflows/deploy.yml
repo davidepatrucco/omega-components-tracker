@@ -1,11 +1,25 @@
 name: Deploy to Lightsail
 
+# 🚀 TRUNK-BASED WORKFLOW
+# - Push su main → Deploy automatico su STAGING
+# - Tag v* o workflow_dispatch con environment=production → Deploy su PRODUCTION
+
 on:
   push:
     branches:
       - main
-      - staging
+    tags:
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Ambiente di deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
 permissions:
   contents: read
@@ -31,17 +45,36 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 📦 Set TAG in base al branch
-      - name: Set image tag
+      # 📦 Determina ambiente di deploy (TRUNK-BASED)
+      - name: Set deploy environment
         id: vars
         run: |
-          # Tag principale per ambiente
-          if [ "${GITHUB_REF}" = "refs/heads/staging" ]; then
-            echo "TAG=staging" >> $GITHUB_ENV
-            echo "EXTRA_TAG=staging-${GITHUB_SHA::8}" >> $GITHUB_ENV
-          else
+          # Default: staging (push su main)
+          DEPLOY_ENV="staging"
+          
+          # Se è un tag v* → production
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            DEPLOY_ENV="production"
+            echo "🏷️ Tag detected: deploying to PRODUCTION"
+          fi
+          
+          # Se è workflow_dispatch, usa l'input
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            DEPLOY_ENV="${{ github.event.inputs.environment }}"
+            echo "🔧 Manual dispatch: deploying to ${DEPLOY_ENV}"
+          fi
+          
+          # Set variabili in base all'ambiente
+          if [ "$DEPLOY_ENV" = "production" ]; then
             echo "TAG=latest" >> $GITHUB_ENV
             echo "EXTRA_TAG=prod-${GITHUB_SHA::8}" >> $GITHUB_ENV
+            echo "DEPLOY_ENV=production" >> $GITHUB_ENV
+            echo "🚀 PRODUCTION DEPLOY"
+          else
+            echo "TAG=staging" >> $GITHUB_ENV
+            echo "EXTRA_TAG=staging-${GITHUB_SHA::8}" >> $GITHUB_ENV
+            echo "DEPLOY_ENV=staging" >> $GITHUB_ENV
+            echo "🧪 STAGING DEPLOY"
           fi
 
       # 🔨 Build & Push Backend
@@ -52,11 +85,11 @@ jobs:
           file: ./omega-app/backend/Dockerfile
           push: true
           build-args: |
-            MONGO_URI=${{ github.ref == 'refs/heads/staging' && secrets.MONGO_URI_STAGE || secrets.MONGO_URI_PROD }}
-            AZURE_STORAGE_ACCOUNT=${{ github.ref == 'refs/heads/staging' && secrets.AZURE_STORAGE_ACCOUNT_STAGE || secrets.AZURE_STORAGE_ACCOUNT }}
-            AZURE_STORAGE_KEY=${{ github.ref == 'refs/heads/staging' && secrets.AZURE_STORAGE_KEY_STAGE || secrets.AZURE_STORAGE_KEY }}
-            AZURE_FILE_SHARE=${{ github.ref == 'refs/heads/staging' && secrets.AZURE_FILE_SHARE_STAGE || secrets.AZURE_FILE_SHARE }}
-            FRONTEND_ORIGIN=${{ github.ref == 'refs/heads/staging' && 'https://staging.omega.intellitude.com' || 'https://omega.intellitude.com' }}
+            MONGO_URI=${{ env.DEPLOY_ENV == 'staging' && secrets.MONGO_URI_STAGE || secrets.MONGO_URI_PROD }}
+            AZURE_STORAGE_ACCOUNT=${{ env.DEPLOY_ENV == 'staging' && secrets.AZURE_STORAGE_ACCOUNT_STAGE || secrets.AZURE_STORAGE_ACCOUNT }}
+            AZURE_STORAGE_KEY=${{ env.DEPLOY_ENV == 'staging' && secrets.AZURE_STORAGE_KEY_STAGE || secrets.AZURE_STORAGE_KEY }}
+            AZURE_FILE_SHARE=${{ env.DEPLOY_ENV == 'staging' && secrets.AZURE_FILE_SHARE_STAGE || secrets.AZURE_FILE_SHARE }}
+            FRONTEND_ORIGIN=${{ env.DEPLOY_ENV == 'staging' && 'https://staging.omega.intellitude.com' || 'https://omega.intellitude.com' }}
             PORT=4000
           tags: |
             152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-backend:${{ env.TAG }}
@@ -70,7 +103,7 @@ jobs:
           file: ./omega-app/frontend/Dockerfile
           push: true
           build-args: |
-            VITE_API_URL=${{ github.ref == 'refs/heads/staging' && 'https://staging.omega.intellitude.com' || 'https://omega.intellitude.com' }}
+            VITE_API_URL=${{ env.DEPLOY_ENV == 'staging' && 'https://staging.omega.intellitude.com' || 'https://omega.intellitude.com' }}
           tags: |
             152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:${{ env.TAG }}
             152485877259.dkr.ecr.us-east-1.amazonaws.com/omega-components-tracker-frontend:${{ env.EXTRA_TAG }}
@@ -111,13 +144,13 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: |
-            ${{ github.ref == 'refs/heads/staging' && secrets.SSH_KEY_STAGE || secrets.SSH_KEY }}
+            ${{ env.DEPLOY_ENV == 'staging' && secrets.SSH_KEY_STAGE || secrets.SSH_KEY }}
 
       # 🔥 Stop & disable Bitnami stack (Apache, Redis, etc.)
       - name: Disable Bitnami stack on Lightsail
         run: |
           echo "[INFO] Disabilito Bitnami stack (Apache/Redis) su ${{ secrets.SSH_HOST }}..."
-          ssh -tt -o StrictHostKeyChecking=no "${{ github.ref == 'refs/heads/staging' && secrets.SSH_USER_STAGE || secrets.SSH_USER }}@${{ github.ref == 'refs/heads/staging' && secrets.SSH_HOST_STAGE || secrets.SSH_HOST }}" "bash -l -c '
+          ssh -tt -o StrictHostKeyChecking=no "${{ env.DEPLOY_ENV == 'staging' && secrets.SSH_USER_STAGE || secrets.SSH_USER }}@${{ env.DEPLOY_ENV == 'staging' && secrets.SSH_HOST_STAGE || secrets.SSH_HOST }}" "bash -l -c '
             set -euo pipefail
             if [ -x /opt/bitnami/ctlscript.sh ]; then
               echo \"[REMOTE] Stop Bitnami stack...\"
@@ -134,9 +167,9 @@ jobs:
             # 🚀 Deploy su Lightsail
       - name: Run remote docker compose
         run: |
-          echo "[INFO] Branch: ${GITHUB_REF}"
+          echo "[INFO] Environment: ${{ env.DEPLOY_ENV }}"
           
-          if [ "${GITHUB_REF}" = "refs/heads/staging" ]; then
+          if [ "${{ env.DEPLOY_ENV }}" = "staging" ]; then
             SSH_HOST="${{ secrets.SSH_HOST_STAGE }}"
             SSH_USER="${{ secrets.SSH_USER_STAGE }}"
             echo "[INFO] Deploy su STAGING: SSH_HOST=$SSH_HOST, SSH_USER=$SSH_USER"
@@ -146,12 +179,8 @@ jobs:
             echo "[INFO] Deploy su PRODUCTION: SSH_HOST=$SSH_HOST, SSH_USER=$SSH_USER"
           fi
 
-          # decide which branch to deploy (expanded before ssh)
-          if [ "${GITHUB_REF}" = "refs/heads/staging" ]; then
-            DEPLOY_BRANCH=staging
-          else
-            DEPLOY_BRANCH=main
-          fi
+          # trunk-based: always deploy from main
+          DEPLOY_BRANCH=main
 
           # Validate SSH parameters before opening the connection
           if [ -z "${SSH_USER:-}" ] || [ -z "${SSH_HOST:-}" ]; then
