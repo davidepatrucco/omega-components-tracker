@@ -1,6 +1,6 @@
 {
   "name": "omega-backend",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "main": "server.js",
   "scripts": {
     "dev": "nodemon --watch . --ext js,json,env --delay 200ms server.js",

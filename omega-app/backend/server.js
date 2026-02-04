@@ -99,7 +99,9 @@ app.get('/api/system-info', (req, res) => {
     serverIP: req.hostname || req.ip || 'unknown',
     mongoUri: cleanMongoUri,
     port: PORT,
-    nodeEnv: process.env.NODE_ENV || 'not set'
+    nodeEnv: process.env.NODE_ENV || 'not set',
+    version: process.env.npm_package_version || require('./package.json').version || '0.0.0',
+    buildTime: process.env.BUILD_TIME || null
   });
 });
 

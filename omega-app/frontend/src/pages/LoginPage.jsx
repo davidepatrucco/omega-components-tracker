@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Card, message, Typography, Space, Divider, Tag } from 'antd';
-import { UserOutlined, LockOutlined, CloudServerOutlined, DatabaseOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, CloudServerOutlined, DatabaseOutlined, EnvironmentOutlined, CodeOutlined } from '@ant-design/icons';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -109,6 +109,20 @@ export default function LoginPage(){
                     <Tag color={getEnvironmentColor(systemInfo.environment)} style={{ fontSize: '11px', margin: 0 }}>
                       {systemInfo.environment}
                     </Tag>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      <CodeOutlined style={{ marginRight: 4 }} />
+                      Versione:
+                    </Text>
+                    <Text style={{ fontSize: '11px', fontFamily: 'monospace' }}>
+                      v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'}
+                      {typeof __BUILD_TIME__ !== 'undefined' && (
+                        <Text type="secondary" style={{ fontSize: '10px', marginLeft: 4 }}>
+                          ({new Date(__BUILD_TIME__).toLocaleDateString('it-IT')})
+                        </Text>
+                      )}
+                    </Text>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
