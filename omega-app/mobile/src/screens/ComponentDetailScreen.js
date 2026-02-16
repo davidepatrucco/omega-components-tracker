@@ -119,13 +119,13 @@ export default function ComponentDetailScreen({ route, navigation }) {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case '1': return '#ff7875'; // red
-      case '2':
-      case '2-ext': return '#ffa940'; // orange
-      case '3': return '#73d13d'; // green
-      case '4': return '#40a9ff'; // blue
-      case '5': return '#b37feb'; // purple
-      case '6': return '#36cfc9'; // cyan
+      case '1': return '#d9d9d9'; // grigio - Nuovo
+      case '2': return '#1890ff'; // blu - Produzione Interna
+      case '2-ext': return '#722ed1'; // viola - Produzione Esterna
+      case '3': return '#52c41a'; // verde - Costruito
+      case '4': return '#eb2f96'; // magenta - In trattamento
+      case '5': return '#13c2c2'; // ciano - Pronto consegna
+      case '6': return '#389e0d'; // verde scuro - Spedito
       default: return '#d9d9d9'; // gray
     }
   };

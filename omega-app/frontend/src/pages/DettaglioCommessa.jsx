@@ -494,8 +494,12 @@ const DettaglioCommessa = () => {
       '#1890ff': 'blue', 
       '#722ed1': 'purple',
       '#52c41a': 'green',
+      '#389e0d': 'green',
       '#faad14': 'gold',
-      '#ff4d4f': 'red'
+      '#ff4d4f': 'red',
+      '#eb2f96': 'magenta',
+      '#13c2c2': 'cyan',
+      '#fa541c': 'volcano'
     };
     
     return colorMap[statusDisplay.color] || 'default';
@@ -631,16 +635,22 @@ const DettaglioCommessa = () => {
       return {
         ...commonProps,
         filters: [
-          { text: 'Arrivato', value: '1' },
-          { text: 'In lavorazione interna', value: '2' },
-          { text: 'Inviato a trattamento', value: '2-ext' },
-          { text: 'Arrivato da trattamento', value: '2-ext:ARR' },
-          { text: 'Lavorato', value: '3' },
-          { text: 'Montato', value: '4' },
-          { text: 'Pronto', value: '5' },
-          { text: 'Spedito', value: '6' },
+          { text: '1 - Nuovo', value: '1' },
+          { text: '2 - Produzione Interna', value: '2' },
+          { text: '2 - Produzione Esterna', value: '2-ext' },
+          { text: '3 - Costruito', value: '3' },
+          { text: '4a - In preparazione', value: 'PREP' },
+          { text: '4b - In trattamento', value: 'IN' },
+          { text: '4c - Arrivato da trattamento', value: 'ARR' },
+          { text: '5 - Pronto per consegna', value: '5' },
+          { text: '6 - Spedito', value: '6' },
         ],
-        onFilter: (value, record) => record.status === value,
+        onFilter: (value, record) => {
+          if (['PREP', 'IN', 'ARR'].includes(value)) {
+            return record.status && record.status.startsWith('4:') && record.status.endsWith(':' + value);
+          }
+          return record.status === value;
+        },
         filterIcon: filtered => <FilterOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
         render: (text, record) => (
           <Tag color={getStatusColor(text)}>

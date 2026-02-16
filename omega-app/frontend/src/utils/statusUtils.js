@@ -36,8 +36,8 @@ export function getStatusColor(status) {
     '2': '#1890ff',        // Produzione Interna - blu  
     '2-ext': '#722ed1',    // Produzione Esterna - viola
     '3': '#52c41a',        // Costruito - verde
-    '5': '#faad14',        // Pronto consegna - arancione
-    '6': '#52c41a'         // Spedito - verde
+    '5': '#13c2c2',        // Pronto consegna - ciano
+    '6': '#389e0d'         // Spedito - verde scuro
   };
   
   if (baseColors[status]) {
@@ -47,9 +47,9 @@ export function getStatusColor(status) {
   // Colori per stati di trattamento
   if (parsed) {
     const treatmentColors = {
-      [TREATMENT_PHASES.PREP]: '#faad14',  // Preparazione - arancione
-      [TREATMENT_PHASES.IN]: '#1890ff',    // In trattamento - blu
-      [TREATMENT_PHASES.ARR]: '#52c41a'    // Arrivato - verde
+      [TREATMENT_PHASES.PREP]: '#faad14',  // Preparazione - arancione/gold
+      [TREATMENT_PHASES.IN]: '#eb2f96',    // In trattamento - magenta
+      [TREATMENT_PHASES.ARR]: '#fa541c'    // Arrivato - volcano/rosso-arancio
     };
     return treatmentColors[parsed.phase] || '#d9d9d9';
   }
