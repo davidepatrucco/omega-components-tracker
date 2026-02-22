@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { buildAllowedStatuses } = require('../utils/statusUtils');
+const { buildAllowedStatuses, maybeAutoTransitionToReady } = require('../utils/statusUtils');
 
 const ComponentSchema = new mongoose.Schema({
 commessaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Commessa', required: true },
@@ -84,6 +84,11 @@ ComponentSchema.index({ updatedAt: -1 });
 // Funzione per calcolare gli stati consentiti (manteniamo per compatibilità)
 ComponentSchema.methods.buildAllowedStatuses = function() {
   return buildAllowedStatuses(this);
+};
+
+// Funzione per auto-transizione a "Pronto per consegna"
+ComponentSchema.methods.maybeAutoTransitionToReady = function() {
+  return maybeAutoTransitionToReady(this);
 };
 
 module.exports = mongoose.model('Component', ComponentSchema);
