@@ -10,7 +10,8 @@ import {
   getSuggestedNextStatuses,
   getStatusOrder,
   BASE_STATUSES,
-  TREATMENT_PHASES
+  TREATMENT_PHASES,
+  TREATMENT_LABELS
 } from '../config/statusConfig.js';
 
 // Re-export delle funzioni principali per il frontend
