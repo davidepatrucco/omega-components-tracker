@@ -3,7 +3,7 @@ import { api } from '../api';
 import { Row, Col, Card, Typography, Statistic, Spin, Tag, Modal, Button, Form, Input, message, Space, Tooltip, Select, Switch, DatePicker, Divider, Table, Segmented, Dropdown } from 'antd';
 import { InfoCircleOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FilterOutlined, SortAscendingOutlined, DownOutlined, AppstoreOutlined, UnorderedListOutlined, SaveOutlined, CopyOutlined } from '@ant-design/icons';
 import BarcodeWithText from '../BarcodeWithText';
-import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses } from '../utils/statusUtils';
+import { getStatusLabel, getStatusColor, formatStatusDisplay, buildAllowedStatuses, generateTableStatusFilters } from '../utils/statusUtils';
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
@@ -1150,17 +1150,7 @@ export default function Lavorazioni(){
                     width: columnWidths['status'] || 160,
                     onResize: handleResize('status'),
                   }),
-                  filters: [
-                    { text: '1 - Nuovo', value: '1' },
-                    { text: '2 - Produzione Interna', value: '2' },
-                    { text: '2 - Produzione Esterna', value: '2-ext' },
-                    { text: '3 - Costruito', value: '3' },
-                    { text: '4a - In preparazione', value: 'PREP' },
-                    { text: '4b - In trattamento', value: 'IN' },
-                    { text: '4c - Arrivato da trattamento', value: 'ARR' },
-                    { text: '5 - Pronto per consegna', value: '5' },
-                    { text: '6 - Spedito', value: '6' },
-                  ],
+                  filters: generateTableStatusFilters(),
                   onFilter: (value, record) => {
                     if (['PREP', 'IN', 'ARR'].includes(value)) {
                       return record.status && record.status.startsWith('4:') && record.status.endsWith(':' + value);

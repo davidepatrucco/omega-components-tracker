@@ -26,30 +26,31 @@ export {
 
 /**
  * Ottiene il colore appropriato per uno stato (per UI)
+ * Palette aggiornata (2026-02-21): colori distintivi per migliore visibilità
  */
 export function getStatusColor(status) {
   const parsed = parseTreatmentStatus(status);
   
-  // Colori per stati base
+  // Colori per stati base - Palette distintiva e armonica
   const baseColors = {
-    '1': '#d9d9d9',        // Nuovo - grigio
-    '2': '#1890ff',        // Produzione Interna - blu  
-    '2-ext': '#722ed1',    // Produzione Esterna - viola
-    '3': '#52c41a',        // Costruito - verde
-    '5': '#13c2c2',        // Pronto consegna - ciano
-    '6': '#389e0d'         // Spedito - verde scuro
+    '1': '#7c8088',        // Nuovo - grigio-blu scuro
+    '2': '#1890ff',        // Produzione Interna - blu brillante
+    '2-ext': '#722ed1',    // Produzione Esterna - viola reale
+    '3': '#52c41a',        // Costruito - verde fresco
+    '5': '#faad14',        // Pronto consegna - arancione/gold
+    '6': '#f5222d'         // Spedito - rosso acceso
   };
   
   if (baseColors[status]) {
     return baseColors[status];
   }
   
-  // Colori per stati di trattamento
+  // Colori per stati di trattamento - Palette distintiva
   if (parsed) {
     const treatmentColors = {
-      [TREATMENT_PHASES.PREP]: '#faad14',  // Preparazione - arancione/gold
-      [TREATMENT_PHASES.IN]: '#eb2f96',    // In trattamento - magenta
-      [TREATMENT_PHASES.ARR]: '#fa541c'    // Arrivato - volcano/rosso-arancio
+      [TREATMENT_PHASES.PREP]: '#ffc069',  // Preparazione - arancione chiaro
+      [TREATMENT_PHASES.IN]: '#eb2f96',    // In trattamento - rosa/magenta
+      [TREATMENT_PHASES.ARR]: '#13c2c2'    // Arrivato - ciano/turchese
     };
     return treatmentColors[parsed.phase] || '#d9d9d9';
   }
@@ -131,4 +132,28 @@ export function groupStatusesForDisplay(statuses) {
   });
   
   return { base, treatments };
+}
+
+/**
+ * Genera i filtri per la tabella (dinamicamente da statusConfig)
+ * Usato in Lavorazioni.jsx e DettaglioCommessa.jsx per evitare hardcoding
+ */
+export function generateTableStatusFilters() {
+  const baseStatuses = [
+    { value: '1', label: getLabel('1') },
+    { value: '2', label: getLabel('2') },
+    { value: '2-ext', label: getLabel('2-ext') },
+    { value: '3', label: getLabel('3') },
+    { value: 'PREP', label: `4a - ${TREATMENT_LABELS.PREP}` },
+    { value: 'IN', label: `4b - ${TREATMENT_LABELS.IN}` },
+    { value: 'ARR', label: `4c - ${TREATMENT_LABELS.ARR}` },
+    { value: '5', label: getLabel('5') },
+    { value: '6', label: getLabel('6') }
+  ];
+  
+  // Converte al formato Ant Design { text, value }
+  return baseStatuses.map(({ value, label }) => ({
+    text: label,
+    value: value
+  }));
 }
