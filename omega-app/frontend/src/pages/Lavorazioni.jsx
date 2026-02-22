@@ -967,8 +967,36 @@ export default function Lavorazioni(){
             <Text type="secondary">Nessuna lavorazione trovata con i filtri selezionati</Text>
           </div>
         ) : viewMode === 'list' ? (
-          /* Visualizzazione Lista/Tabella */
-          <Card style={{ marginTop: 16 }}>
+          <>
+            {/* Summary Stats - Minimal */}
+            <div style={{ 
+              marginBottom: 16, 
+              display: 'flex', 
+              gap: 16, 
+              flexWrap: 'wrap', 
+              alignItems: 'center',
+              padding: '8px 0',
+              fontSize: 13
+            }}>
+              <Text strong style={{ whiteSpace: 'nowrap' }}>Tot: {visibleComponents.length} di {filteredAndSortedComponents.length}</Text>
+              {(() => {
+                const statusCounts = {};
+                visibleComponents.forEach(comp => {
+                  const status = comp.status;
+                  statusCounts[status] = (statusCounts[status] || 0) + 1;
+                });
+                
+                const uniqueStatuses = Object.keys(statusCounts).sort();
+                return uniqueStatuses.slice(0, 5).map(status => (
+                  <Tag key={status} color={getStatusColor(status)} style={{ margin: 0, fontSize: 12 }}>
+                    {statusCounts[status]}
+                  </Tag>
+                ));
+              })()}
+            </div>
+
+            {/* Visualizzazione Lista/Tabella */}
+            <Card style={{ marginTop: 0 }}>
             <Table
               dataSource={visibleComponents}
               rowKey="_id"
@@ -1430,60 +1458,6 @@ export default function Lavorazioni(){
               scroll={{ x: 1600 }}
             />
             
-            {/* Totals Summary Widget */}
-            <div style={{
-              marginTop: 20,
-              padding: 16,
-              backgroundColor: '#fafafa',
-              borderRadius: 8,
-              border: '1px solid #e8e8e8'
-            }}>
-              <Row gutter={16} align="middle">
-                <Col span={24} style={{ marginBottom: 12 }}>
-                  <Typography.Title level={5} style={{ margin: 0, color: '#262626' }}>
-                    Σ Riepilogo Componenti Visualizzati
-                  </Typography.Title>
-                </Col>
-              </Row>
-              <Row gutter={[16, 16]}>
-                <Col xs={24} sm={12} md={6}>
-                  <Card size="small" style={{ backgroundColor: '#fff', textAlign: 'center' }}>
-                    <Statistic 
-                      title="Totale" 
-                      value={visibleComponents.length}
-                      suffix={`di ${filteredAndSortedComponents.length}`}
-                      valueStyle={{ color: '#1677ff', fontSize: 28, fontWeight: 'bold' }}
-                    />
-                  </Card>
-                </Col>
-                {/* Breakdown by status - only show for selected statuses */}
-                {(() => {
-                  const statusCounts = {};
-                  visibleComponents.forEach(comp => {
-                    const status = comp.status;
-                    statusCounts[status] = (statusCounts[status] || 0) + 1;
-                  });
-                  
-                  const uniqueStatuses = Object.keys(statusCounts).sort();
-                  return uniqueStatuses.slice(0, 5).map(status => (
-                    <Col xs={24} sm={12} md={6} key={status}>
-                      <Card size="small" style={{ backgroundColor: '#fff', textAlign: 'center' }}>
-                        <Statistic 
-                          title={getStatusLabel(status)}
-                          value={statusCounts[status]}
-                          valueStyle={{ 
-                            color: getStatusColor(status), 
-                            fontSize: 24,
-                            fontWeight: 'bold'
-                          }}
-                        />
-                      </Card>
-                    </Col>
-                  ));
-                })()}
-              </Row>
-            </div>
-            
             {visibleComponents.length < filteredAndSortedComponents.length && (
               <div style={{ textAlign: 'center', marginTop: 16 }}>
                 <Button
@@ -1499,6 +1473,7 @@ export default function Lavorazioni(){
               </div>
             )}
           </Card>
+          </>
         ) : (
           /* Visualizzazione Card (esistente) */
           <>
