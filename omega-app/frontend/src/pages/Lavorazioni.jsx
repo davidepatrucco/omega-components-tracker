@@ -247,7 +247,9 @@ export default function Lavorazioni(){
       
       // Fetch components, commesse and stats in parallel
       const [componentsRes, commisseRes, statsRes] = await Promise.all([
-        api.get('/api/components?pageSize=1000'), // Get a large number of components
+        // ponytail: pageSize=0 -> backend limit(0) = nessun limite (prima 1000 tagliava i componenti oltre il millesimo).
+        // Carica tutto: ~1 MB ogni 1000 componenti; passare a paginazione lato server se la pagina rallenta.
+        api.get('/api/components?pageSize=0'),
         api.get('/api/commesse'),
         api.get('/api/stats')
       ]);
