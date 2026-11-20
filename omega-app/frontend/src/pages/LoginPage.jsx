@@ -74,11 +74,11 @@ export default function LoginPage(){
 
           <Form name="login" onFinish={onFinish} layout="vertical">
             <Form.Item name="username" label="Username" rules={[{ required: true, message: 'Inserisci username' }]}>
-              <Input prefix={<UserOutlined />} placeholder="d" />
+              <Input prefix={<UserOutlined />} placeholder="Username" />
             </Form.Item>
 
             <Form.Item name="password" label="Password" rules={[{ required: true, message: 'Inserisci password' }]}>
-              <Input.Password prefix={<LockOutlined />} placeholder="d" />
+              <Input.Password prefix={<LockOutlined />} placeholder="Password" />
             </Form.Item>
 
             <Form.Item>

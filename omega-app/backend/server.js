@@ -9,8 +9,6 @@ const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const upload = multer({ dest: './upload' });
 const mongoose = require('mongoose');
-const User = require('./models/User');
-const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -111,24 +109,9 @@ async function start() {
   // connect to MongoDB
   try {
     await mongoose.connect(MONGO, { useNewUrlParser: true, useUnifiedTopology: true });
-    console.log('Connected to MongoDB:', MONGO);
+    console.log('Connected to MongoDB:', MONGO.replace(/\/\/[^@/]*@/, '//***@'));
   } catch (err) {
     console.error('Mongo connection error', err);
-    throw err;
-  }
-
-  // ensure default dummy user exists (username: d / password: d)
-  try {
-    const existing = await User.findOne({ username: 'd' });
-    if (!existing) {
-      const hash = await bcrypt.hash('d', 10);
-      await User.create({ username: 'd', password: hash, profilo: 'ADMIN' });
-      console.log('Created default user: d');
-    } else {
-      console.log('Default user exists');
-    }
-  } catch (err) {
-    console.error('Error ensuring default user', err);
     throw err;
   }
 
